@@ -21,6 +21,11 @@ public class ServiceContainer : IServiceProvider, IUniformProvider
         return _services[serviceType];
     }
 
+    public T GetService<T>()
+    {
+        return (T)_services[typeof(T)];
+    }
+
     public T GetUniform<T>()
     {
         return (T)_services[typeof(T)];

@@ -7,3 +7,9 @@ public struct InlineArray4<T>
 {
     private T _t0;
 }
+
+[InlineArray(8)]
+public struct InlineArray8<T>
+{
+    private T _t0;
+}

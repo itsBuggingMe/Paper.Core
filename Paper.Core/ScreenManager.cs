@@ -20,12 +20,14 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
     private Game _game;
     private IScreen _current;
     private ServiceContainer _services;
+    private Time _shared;
 
     private ScreenManager(ServiceContainer services, Func<ServiceContainer, IScreen> firstFactory, Game game)
     {
         _firstFactory = firstFactory;
         _services = services;
         _game = game;
+        _shared = services.GetService<Time>();
     }
 
     public bool Enabled => true;
@@ -58,13 +60,15 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
     {
         ThrowIfNotInitalized(out IScreen current);
         InputHelper.TickUpdate(_game.IsActive);
-        current.Update(gameTime);
+        _shared.SetValues(gameTime);
+        current.Update(_shared);
     }
 
     public void Draw(GameTime gameTime)
     {
         ThrowIfNotInitalized(out IScreen current);
-        current.Draw(gameTime);
+        _shared.SetValues(gameTime);
+        current.Draw(_shared);
     }
 
     public void SwitchScreen<T>()
@@ -101,8 +105,8 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
         private static readonly NullScreen s_instance = new NullScreen();
         public static IScreen Create(ServiceContainer services) => s_instance;
 
-        public void Update(GameTime gameTime) { }
-        public void Draw(GameTime gameTime) { }
+        public void Update(Time gameTime) { }
+        public void Draw(Time gameTime) { }
 
         public void OnEnter(IScreen previous, object args) { }
         public object OnExit(IScreen next) => null;
