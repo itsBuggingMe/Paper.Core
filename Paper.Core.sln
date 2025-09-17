@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Paper.Core.Generator", "Pap
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Paper.Core.UI", "Paper.Core.UI\Paper.Core.UI.csproj", "{8E830B99-0DFB-4144-BAA7-3BDA4328E8DF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Paper.Core.UI.Kni", "Paper.Core.UI\Paper.Core.UI.Kni.csproj", "{027006E2-E178-C8D2-B0E4-FE783CD66E6A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Paper.Core.Kni", "Paper.Core\Paper.Core.Kni.csproj", "{1ED93059-4C0F-A21B-C2CF-970DEB53BC57}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +37,14 @@ Global
 		{8E830B99-0DFB-4144-BAA7-3BDA4328E8DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E830B99-0DFB-4144-BAA7-3BDA4328E8DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8E830B99-0DFB-4144-BAA7-3BDA4328E8DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{027006E2-E178-C8D2-B0E4-FE783CD66E6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{027006E2-E178-C8D2-B0E4-FE783CD66E6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{027006E2-E178-C8D2-B0E4-FE783CD66E6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{027006E2-E178-C8D2-B0E4-FE783CD66E6A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1ED93059-4C0F-A21B-C2CF-970DEB53BC57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1ED93059-4C0F-A21B-C2CF-970DEB53BC57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1ED93059-4C0F-A21B-C2CF-970DEB53BC57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1ED93059-4C0F-A21B-C2CF-970DEB53BC57}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
