@@ -28,4 +28,28 @@ public record struct UIVector2
     {
         return new Vector2(X * (DynamicX ? scaled.X : 1), Y * (DynamicY ? scaled.Y : 1));
     }
+
+    public UIVector2(float value, bool dynamic = false)
+    {
+        X = value;
+        Y = value;
+        DynamicX = dynamic;
+        DynamicY = dynamic;
+    }
+
+    public UIVector2(float x, float y, bool dynamicX = true, bool dynamicY = true)
+    {
+        X = x;
+        Y = y;
+        DynamicX = dynamicX;
+        DynamicY = dynamicY;
+    }
+
+    public UIVector2(Vector2 vector, bool dynamic = true)
+    {
+        X = vector.X;
+        Y = vector.Y;
+        DynamicX = dynamic;
+        DynamicY = dynamic;
+    }
 }
