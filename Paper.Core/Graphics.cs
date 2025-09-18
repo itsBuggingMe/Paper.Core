@@ -1,29 +1,33 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
-using Paper.Core.Batcher;
 
 namespace Paper.Core;
 
-public class Graphics
+public class GraphicsBase
 {
     public SpriteBatch SpriteBatch { get; private set; }
     public Texture2D WhitePixel { get; private set; }
     public GraphicsDevice GraphicsDevice { get; private set; }
     public GraphicsDeviceManager GraphicsDeviceManager { get; private set; }
-    public AtlasBatcher Batcher { get; private set; }
     public ContentManager Content { get; private set; }
+    public Camera2D Camera { get; private set; }
+    public Game Game { get; private set; }
     public Fonts Fonts { get; private set; }
-    public Graphics(GraphicsDeviceManager graphicsDeviceManager, ContentManager content)
+    public GraphicsBase(GraphicsDeviceManager graphicsDeviceManager, ContentManager content, Game game)
     {
         Content = content;
-        Batcher = new AtlasBatcher(graphicsDeviceManager.GraphicsDevice, content);
+        Game = game;
         GraphicsDeviceManager = graphicsDeviceManager;
         GraphicsDevice = graphicsDeviceManager.GraphicsDevice;
         SpriteBatch = new SpriteBatch(GraphicsDevice);
         WhitePixel = new Texture2D(GraphicsDevice, 1, 1);
+        Camera = new Camera2D(GraphicsDevice);
         WhitePixel.SetData([Color.White]);
-        Fonts = new Fonts(content.Load<SpriteFont>("MainFont"), content.Load<SpriteFont>("SubFont"));
+        SpriteFont? second = null;
+        try { second = content.Load<SpriteFont>("SubFont"); } catch { }
+        SpriteFont main = content.Load<SpriteFont>("MainFont");
+        Fonts = new Fonts(main, second ?? main);
     }
 
     public void DrawRectangle(Rectangle rectangle, Color color)

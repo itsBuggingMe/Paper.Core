@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Paper.Core.UI</RootNamespace>
@@ -9,5 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="nkast.Xna.Framework" Version="4.1.9001" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Paper.Core.UI\**\*.cs" Exclude="**\obj\**\*.cs" />
   </ItemGroup>
 </Project>

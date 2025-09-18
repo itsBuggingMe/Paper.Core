@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <RootNamespace>Paper.Core</RootNamespace>
@@ -8,10 +8,6 @@
   <ItemGroup>
     <PackageReference Include="Frent" Version="0.5.7-beta" />
     <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
-    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.4" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.4" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Paper.Core.Batcher\Paper.Core.Batcher.csproj" />
   </ItemGroup>
 </Project>

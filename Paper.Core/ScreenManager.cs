@@ -1,5 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
@@ -18,7 +20,7 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
 
     private Func<ServiceContainer, IScreen> _firstFactory;
     private Game _game;
-    private IScreen _current;
+    private IScreen? _current;
     private ServiceContainer _services;
     private Time _shared;
 
@@ -36,10 +38,10 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
     public bool Visible => true;
 
 #pragma warning disable CS0067 // Event never used
-    public event EventHandler<EventArgs> EnabledChanged;
-    public event EventHandler<EventArgs> UpdateOrderChanged;
-    public event EventHandler<EventArgs> DrawOrderChanged;
-    public event EventHandler<EventArgs> VisibleChanged;
+    public event EventHandler<EventArgs>? EnabledChanged;
+    public event EventHandler<EventArgs>? UpdateOrderChanged;
+    public event EventHandler<EventArgs>? DrawOrderChanged;
+    public event EventHandler<EventArgs>? VisibleChanged;
 #pragma warning restore CS0067 // Event never used
 
     public static ScreenManager Create<T>(ServiceContainer services, Game game)
@@ -58,17 +60,39 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
 
     public void Update(GameTime gameTime)
     {
-        ThrowIfNotInitalized(out IScreen current);
-        InputHelper.TickUpdate(_game.IsActive);
-        _shared.SetValues(gameTime);
-        current.Update(_shared);
+        try
+        {
+            InputHelper.TickUpdate(_game.IsActive);
+            ThrowIfNotInitalized(out IScreen current);
+
+            if (InputHelper.RisingEdge(Keys.R) && InputHelper.Down(Keys.LeftControl))
+            {
+                var arg = current.OnExit();
+                var next = _current = _firstFactory(_services);
+                next.OnEnter(current, arg);
+            }
+
+            _shared.SetValues(gameTime);
+            current.Update(_shared);
+        }
+        catch (Exception e)
+        {
+            Debugger.Break();
+        }
     }
 
     public void Draw(GameTime gameTime)
     {
-        ThrowIfNotInitalized(out IScreen current);
-        _shared.SetValues(gameTime);
-        current.Draw(_shared);
+        try
+        {
+            ThrowIfNotInitalized(out IScreen current);
+            _shared.SetValues(gameTime);
+            current.Draw(_shared);
+        }
+        catch (Exception e)
+        {
+            Debugger.Break();
+        }
     }
 
     public void SwitchScreen<T>()
@@ -77,14 +101,23 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
         ThrowIfNotInitalized(out var current);
 
         var next = CreateScreen<T>(_services);
-        object arg = current.OnExit(next);
+        object? arg = current.OnExit();
+        _current = next;
+        next.OnEnter(current, arg);
+    }
+
+    public void SwitchScreen(IScreen next)
+    {
+        ThrowIfNotInitalized(out var current);
+
+        object? arg = current.OnExit();
         _current = next;
         next.OnEnter(current, arg);
     }
 
     private void ThrowIfNotInitalized(out IScreen current)
     {
-        if(_current is null)
+        if (_current is null)
         {
             throw new InvalidOperationException("Screen Manager not initalized!");
         }
@@ -108,7 +141,7 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
         public void Update(Time gameTime) { }
         public void Draw(Time gameTime) { }
 
-        public void OnEnter(IScreen previous, object args) { }
-        public object OnExit(IScreen next) => null;
+        public void OnEnter(IScreen previous, object? args) { }
+        public object? OnExit() => null;
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework;
 
 namespace Paper.Core;
+
 public static class InputHelper
 {
     public static KeyboardState KeyboardState { get; private set; }
