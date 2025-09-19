@@ -9,20 +9,42 @@ public abstract class UIBase<TGraphics>
 
     protected UIBase<TGraphics>? Parent => _parent;
     private readonly List<UIBase<TGraphics>> _children = [];
-    private readonly UIVector2 _position;
+    private UIVector2 _position;
     private UIVector2 _size;
 
-    private readonly Vector2 _elementAlignment;
-    protected TGraphics Graphics => _graphics ?? throw new InvalidOperationException("No Graphics Object - Does this UI have a parent?");
+    public Vector2 ElementAlign { get; set; }
+
+    public TGraphics Graphics
+    {
+        get
+        {
+            if(_graphics is not null)
+                return _graphics;
+
+            if (_parent is null)
+                throw new InvalidOperationException("No Graphics Object - Does this UI have a parent?");
+
+            return _graphics = _parent.Graphics;
+        }
+    }
     internal TGraphics? _graphics;
+
+    public void SetPosition(Vector2 pos)
+    {
+        _position = _position with
+        {
+            X = pos.X,
+            Y = pos.Y,
+        };
+    }
 
     public Vector2 Position
     {
         get
         {
             Vector2 basedPosition = _parent is null ? default : _parent.Position;
-            Vector2 vec = _position.Scale(ScaleMultipler);
-            return basedPosition + vec - _elementAlignment * Size;
+            Vector2 vec = _position.Scale(ScaleMultiplerPos);
+            return basedPosition + vec - ElementAlign * Size;
         }
     }
 
@@ -30,19 +52,29 @@ public abstract class UIBase<TGraphics>
     {
         get
         {
-            Vector2 vec = _size.Scale(ScaleMultipler);
+            Vector2 vec = _size.Scale(ScaleMultiplerSize);
             return vec;
         }
     }
 
     internal Vector2 _scaleMultiplerAsRoot;
-    public Vector2 ScaleMultipler
+    public Vector2 ScaleMultiplerSize
     {
         get
         {
             if (Parent is null)
                 return _scaleMultiplerAsRoot;
-            return new UIVector2(1, 1, _size.DynamicX, _size.DynamicY).Scale(Parent.ScaleMultipler);
+            return new UIVector2(1, 1, _size.DynamicX, _size.DynamicY).Scale(Parent.ScaleMultiplerSize);
+        }
+    }
+
+    public Vector2 ScaleMultiplerPos
+    {
+        get
+        {
+            if (Parent is null)
+                return _scaleMultiplerAsRoot;
+            return new UIVector2(1, 1, _position.DynamicX, _position.DynamicY).Scale(Parent.ScaleMultiplerPos);
         }
     }
 

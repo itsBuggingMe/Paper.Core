@@ -60,8 +60,10 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
 
     public void Update(GameTime gameTime)
     {
+#if BLAZORGL
         try
         {
+#endif
             InputHelper.TickUpdate(_game.IsActive);
             ThrowIfNotInitalized(out IScreen current);
 
@@ -74,25 +76,31 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
 
             _shared.SetValues(gameTime);
             current.Update(_shared);
+#if BLAZORGL
         }
         catch (Exception e)
         {
             Debugger.Break();
         }
+#endif
     }
 
     public void Draw(GameTime gameTime)
     {
+#if BLAZORGL
         try
         {
+#endif
             ThrowIfNotInitalized(out IScreen current);
             _shared.SetValues(gameTime);
             current.Draw(_shared);
+#if BLAZORGL
         }
         catch (Exception e)
         {
             Debugger.Break();
         }
+#endif
     }
 
     public void SwitchScreen<T>()

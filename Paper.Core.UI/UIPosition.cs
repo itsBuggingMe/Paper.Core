@@ -7,22 +7,22 @@ public record struct UIVector2
     /// <summary>
     /// The given X coordinate.
     /// </summary>
-    public readonly float X;
+    public float X;
     /// <summary>
     /// The given Y coordinate.
     /// </summary>
-    public readonly float Y;
+    public float Y;
 
     public readonly Vector2 Vector => new(X, Y);
 
     /// <summary>
     /// Whether or not the X coordinate is exact or scaled.
     /// </summary>
-    public readonly bool DynamicX;
+    public bool DynamicX;
     /// <summary>
     /// Whether or not the Y coordinate is exact or scaled.
     /// </summary>
-    public readonly bool DynamicY;
+    public bool DynamicY;
 
     internal readonly Vector2 Scale(Vector2 scaled)
     {
@@ -52,4 +52,6 @@ public record struct UIVector2
         DynamicX = dynamic;
         DynamicY = dynamic;
     }
+
+    public static implicit operator UIVector2(Vector2 vector) => new(vector);
 }
