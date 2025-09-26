@@ -21,7 +21,9 @@ public static class InputHelper
 
     public static Point MouseLocation => MouseState.Position;
 
-    public static void TickUpdate(bool isActive)
+    public static int? CustomScrollValue = null;
+
+    public static void TickUpdate(bool _)
     {
         PrevKeyboardState = KeyboardState;
         PrevMouseState = MouseState;
@@ -31,13 +33,13 @@ public static class InputHelper
         MouseState = Mouse.GetState();
         Touches = TouchPanel.GetState();
 
-        if (!isActive)
-        {
-            PrevKeyboardState = default;
-            PrevMouseState = default;
-            KeyboardState = default;
-            MouseState = default;
-        }
+        if (CustomScrollValue is { } scrollValue)
+            MouseState = new MouseState(MouseState.X, MouseState.Y, scrollValue,
+                MouseState.LeftButton,
+                MouseState.MiddleButton,
+                MouseState.RightButton,
+                MouseState.XButton1,
+                MouseState.XButton2);
     }
 
     /// <summary>

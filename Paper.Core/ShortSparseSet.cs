@@ -78,7 +78,7 @@ public class ShortSparseSet<T>
             goto doesntExist;
 
         value = localDense[index];
-        return false;
+        return true;
 
     //saves a bit of code size
     doesntExist:

@@ -18,8 +18,9 @@
     <PackageReference Include="nkast.Xna.Framework.Devices" Version="4.1.9001" />
     <PackageReference Include="nkast.Xna.Framework.Storage" Version="4.1.9001" />
     <PackageReference Include="nkast.Xna.Framework.XR" Version="4.1.9001" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.11" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\Paper.Core\**\*.cs" Exclude="**\obj\**\*.cs"/>
+    <Compile Include="..\..\Paper.Core\**\*.cs" Exclude="**\obj\**\*.cs" />
   </ItemGroup>
 </Project>

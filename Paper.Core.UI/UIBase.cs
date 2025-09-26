@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using System.Security.Cryptography;
 
 namespace Paper.Core.UI;
 
@@ -7,10 +8,18 @@ public abstract class UIBase<TGraphics>
     public bool IsRootElement => _parent is null;
     private UIBase<TGraphics>? _parent;
 
+    public void Remove() => _parent?.RemoveChild(this);
+
     protected UIBase<TGraphics>? Parent => _parent;
     private readonly List<UIBase<TGraphics>> _children = [];
+
+    public UIVector2 RawPosition => _position;
+    public UIVector2 RawSize => _size;
+
     private UIVector2 _position;
     private UIVector2 _size;
+
+    public bool Visible { get; set; } = true;
 
     public Vector2 ElementAlign { get; set; }
 
@@ -38,13 +47,22 @@ public abstract class UIBase<TGraphics>
         };
     }
 
+    public void SetSize(Vector2 size)
+    {
+        _size = _size with
+        {
+            X = size.X,
+            Y = size.Y,
+        };
+    }
+
     public Vector2 Position
     {
         get
         {
             Vector2 basedPosition = _parent is null ? default : _parent.Position;
             Vector2 vec = _position.Scale(ScaleMultiplerPos);
-            return basedPosition + vec - ElementAlign * Size;
+            return basedPosition + vec;
         }
     }
 
@@ -78,7 +96,7 @@ public abstract class UIBase<TGraphics>
         }
     }
 
-    public Rectangle Bounds => new Rectangle(Position.ToPoint(), Size.ToPoint());
+    public Rectangle Bounds => new Rectangle((Position - ElementAlign * Size).ToPoint(), Size.ToPoint());
 
     public UIBase(UIVector2 xy) : this(xy, default) { }
 
@@ -94,9 +112,10 @@ public abstract class UIBase<TGraphics>
         get => _children;
         set
         {
-            foreach (var item in _children)
+            for(int i = _children.Count - 1; i >= 0; i--)
             {
-                if(!value.Contains(item))
+                var item = _children[i];
+                if (!value.Contains(item))
                     RemoveChild(item);
             }
             foreach(var item in value)
@@ -107,15 +126,32 @@ public abstract class UIBase<TGraphics>
         }
     }
 
-    public virtual void Update()
+    public bool DoUpdate()
     {
-        foreach (var item in Children)
-            item.Update();
+        if (!Visible)
+            return false;
+        return Update();
     }
+
+    public virtual bool Update()
+    {
+        bool interacted = false;
+        for(int i = Children.Count - 1; i >= 0; i--)
+            interacted |= Children[i].DoUpdate();
+        return interacted;
+    }
+
+    public void DoDraw()
+    {
+        if (!Visible)
+            return;
+        Draw();
+    }
+
     public virtual void Draw()
     {
-        foreach(var item in Children)
-            item.Draw();
+        for (int i = Children.Count - 1; i >= 0; i--)
+            Children[i].DoDraw();
     }
 
     public void AddChild(UIBase<TGraphics> child)
