@@ -1,6 +1,8 @@
 ﻿using Frent;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace Paper.Core;
@@ -35,5 +37,17 @@ public class ServiceContainer : IServiceProvider, IUniformProvider
     {
         _services.Remove(typeof(T));
         return this;
+    }
+
+    public T Activate<T>()
+    {
+        return (T?)Activator.CreateInstance(typeof(T), 
+            typeof(T)
+                .GetConstructors()
+                .First()
+                .GetParameters()
+                .Select(t => t.ParameterType)
+                .Select(GetService)
+                .ToArray()) ?? throw new Exception("Unable to activate");
     }
 }
