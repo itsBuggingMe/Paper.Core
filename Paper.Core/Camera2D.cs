@@ -40,4 +40,10 @@ public class Camera2D
         return new Vector2(worldPos3.X, worldPos3.Y);
     }
 
+    public Vector2 WorldToScreen(Vector2 worldPosition)
+    {
+        Vector3 worldPos3 = Vector3.Transform(new Vector3(worldPosition, 0), View);
+
+        return new Vector2(worldPos3.X, worldPos3.Y);
+    }
 }
