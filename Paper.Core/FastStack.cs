@@ -18,7 +18,7 @@ public struct FastStack<T>(int capacity)
     public ref T PushRef() => ref MemoryHelper.GetValueOrResize(ref _buffer, _nextIndex++);
     public T Pop() => _buffer[--_nextIndex];
     public Span<T> AsSpan() => MemoryMarshal.CreateSpan(ref MemoryMarshal.GetArrayDataReference(_buffer), _nextIndex);
-    public bool TryPop(out T value)
+    public bool TryPop([NotNullWhen(true)] out T? value)
     {
         if (_nextIndex == 0)
         {

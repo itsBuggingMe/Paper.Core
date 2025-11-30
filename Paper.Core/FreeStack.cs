@@ -1,5 +1,4 @@
-﻿using Paper.Core;
-using System;
+﻿using System;
 
 namespace Paper.Core;
 
@@ -15,8 +14,8 @@ public struct FreeStack<T> where T : IFreeListId
         _freeHead = -1;
     }
 
-    public int Count => _count;
-    public int Max => _items.Count;
+    public readonly int Count => _count;
+    public readonly int Max => _items.Count;
 
     public ref T this[int index] => ref _items[index];
 
@@ -47,6 +46,8 @@ public struct FreeStack<T> where T : IFreeListId
     {
         _count--;
         ref T item = ref _items[id];
+        if (!item.Exists)
+            return;
         item.Exists = false;
         item.FreeNext = _freeHead;
         _freeHead = id;
@@ -56,5 +57,5 @@ public struct FreeStack<T> where T : IFreeListId
 public interface IFreeListId
 {
     int FreeNext { get; set; }
-    bool Exists { set; }
+    bool Exists { get;  set; }
 }
