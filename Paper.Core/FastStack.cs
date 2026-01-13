@@ -49,6 +49,15 @@ public struct FastStack<T>(int capacity)
             }
         }
     }
+
+    public Enumerator GetEnumerator() => new Enumerator(_buffer, _nextIndex);
+
+    public struct Enumerator(T[] buffer, int max)
+    {
+        int index;
+        public bool MoveNext() => ++index < max;
+        public T Current => buffer[index];
+    }
 }
 
 public static class MemoryHelper
