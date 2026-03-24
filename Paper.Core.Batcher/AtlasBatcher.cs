@@ -336,9 +336,11 @@ public class AtlasBatcher
         {
             Vector64<float> lower = Vector64.Create((float)sourceRectangle.X, sourceRectangle.Y);
             Vector64<float> higher = Vector64.Create((float)sourceRectangle.Width, sourceRectangle.Height);
-            Vector128<float> corners = Vector128.Create(lower, lower + higher);
+            Vector64<float> textPos = Vector64.Create(VTL.TextureCoordinate.X, VTL.TextureCoordinate.Y);
+            Vector128<float> corners = Vector128.Create(lower + textPos, lower + higher + textPos);
 
             corners /= Vector128.Create(_atlasWidth, _atlasHeight, _atlasWidth, _atlasHeight);
+
             //lx,ty,rx,by
             VTL.TextureCoordinate = Unsafe.BitCast<Vector64<float>, Vector2>(corners.GetLower());
             VBR.TextureCoordinate = Unsafe.BitCast<Vector64<float>, Vector2>(corners.GetUpper());
