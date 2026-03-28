@@ -336,10 +336,13 @@ public class AtlasBatcher
         {
             Vector64<float> lower = Vector64.Create((float)sourceRectangle.X, sourceRectangle.Y);
             Vector64<float> higher = Vector64.Create((float)sourceRectangle.Width, sourceRectangle.Height);
-            Vector64<float> textPos = Vector64.Create(VTL.TextureCoordinate.X, VTL.TextureCoordinate.Y);
-            Vector128<float> corners = Vector128.Create(lower + textPos, lower + higher + textPos);
+            Vector128<float> corners = Vector128.Create(lower, lower + higher);
 
             corners /= Vector128.Create(_atlasWidth, _atlasHeight, _atlasWidth, _atlasHeight);
+            Vector128<float> textPos = Vector128.Create(
+                Unsafe.BitCast<Vector2, Vector64<float>>(VTL.TextureCoordinate),
+                Unsafe.BitCast<Vector2, Vector64<float>>(VTL.TextureCoordinate));
+            corners += textPos;
 
             //lx,ty,rx,by
             VTL.TextureCoordinate = Unsafe.BitCast<Vector64<float>, Vector2>(corners.GetLower());
@@ -350,6 +353,11 @@ public class AtlasBatcher
             //rx,ty,lx,by
             VTR.TextureCoordinate = Unsafe.BitCast<Vector64<float>, Vector2>(corners.GetLower());
             VBL.TextureCoordinate = Unsafe.BitCast<Vector64<float>, Vector2>(corners.GetUpper());
+
+            var pos = TL;
+            TR = pos + new STVector(sourceRectangle.Width, 0);
+            BL = pos + new STVector(0, sourceRectangle.Height);
+            BR = pos + new STVector(sourceRectangle.Width, sourceRectangle.Height);
 
             return this;
         }
