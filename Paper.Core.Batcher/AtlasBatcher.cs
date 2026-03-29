@@ -42,6 +42,14 @@ public class AtlasBatcher
     private uint[] _indicies;
     private int _nextVertexIndex;
 
+    public Vector2 GetTextureSize(TextureHandle handle)
+    {
+        if (handle.BatcherId != Id)
+            ThrowInvalidTextureHandle();
+        ref var metadata = ref _handleLookup[handle.Value];
+        return (metadata.BR - metadata.TL) * _atlas.Bounds.Size.ToVector2();
+    }
+
     public AtlasBatcher(
         GraphicsDevice graphicsDevice,
         ContentManager contentManager,
@@ -69,7 +77,7 @@ public class AtlasBatcher
         _verticiesIndiciesDirty = true;
     }
 
-    public TextureHandle CreateHandle(Texture2D texture)
+    public TextureHandle GetTextureHandle(Texture2D texture)
     {
         var result = texture.GetTextureHandle(this);
 
@@ -81,7 +89,7 @@ public class AtlasBatcher
         return result;
     }
 
-    public BatcherSprite Draw(Texture2D texture, Vector2 position) => Draw(CreateHandle(texture), position);
+    public BatcherSprite Draw(Texture2D texture, Vector2 position) => Draw(GetTextureHandle(texture), position);
 
     public BatcherSprite Draw(TextureHandle handle, Vector2 position, Vector2 origin)
     {
@@ -278,7 +286,7 @@ public class AtlasBatcher
             _atlasHeight = aHeight;
             _origin = Unsafe.BitCast<Vector2, STVector>(origin);
 
-            STVector pos = Unsafe.BitCast<Vector2, STVector>(position);
+            STVector pos = Unsafe.BitCast<Vector2, STVector>(position) - _origin;
 
             TL = pos;
             TR = pos + new STVector(tWidth, 0);
@@ -313,10 +321,11 @@ public class AtlasBatcher
                 _ => (MathF.Sin(radians), MathF.Cos(radians))
             };
 
-            Rotate(ref TL, sin, cos, _origin);
-            Rotate(ref TR, sin, cos, _origin);
-            Rotate(ref BL, sin, cos, _origin);
-            Rotate(ref BR, sin, cos, _origin);
+            STVector originWorldCoord = _origin + TL;
+            Rotate(ref TL, sin, cos, originWorldCoord);
+            Rotate(ref TR, sin, cos, originWorldCoord);
+            Rotate(ref BL, sin, cos, originWorldCoord);
+            Rotate(ref BR, sin, cos, originWorldCoord);
 
             return this;
 

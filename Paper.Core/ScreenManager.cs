@@ -64,8 +64,9 @@ public class ScreenManager : IGameComponent, IUpdateable, IDrawable
         try
         {
 #endif
+        if(_game.IsActive)
             InputHelper.TickUpdate(_game.IsActive);
-            ThrowIfNotInitalized(out IScreen current);
+        ThrowIfNotInitalized(out IScreen current);
 
             if (InputHelper.RisingEdge(Keys.R) && InputHelper.Down(Keys.LeftControl))
             {
