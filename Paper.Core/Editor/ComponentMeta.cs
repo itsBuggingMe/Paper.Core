@@ -13,7 +13,7 @@ namespace Paper.Core.Editor;
 internal class ComponentMeta(ComponentID id)
 {
     public string Name { get; private set; } = id.Type.Name;
-    public string Description { get; private set; } = id.Type.GetCustomAttribute<DescriptionAttribute>()?.Description;
+    public string Description { get; private set; } = id.Type.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "<no description>";
     public ComponentID ID { get; private set; } = id;
 
     public static readonly FrozenDictionary<Type, IFieldModifer> FieldModifierTable = typeof(ComponentMeta)
@@ -24,12 +24,12 @@ internal class ComponentMeta(ComponentID id)
         .ToFrozenDictionary(k => k.FieldType);
 
     public ImmutableArray<ComponentID> Arguments { get; private set; } =
-        id.Type.GetMethod("Update")?
-               .GetParameters()
+        id.Type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+               .Where(m => m.Name == "Update")
+               .SelectMany(m => m.GetParameters())
                .Where(t => t.ParameterType.IsByRef)
                .Select(p => Component.GetComponentID(p.ParameterType.GetElementType()!))
-               .ToImmutableArray()
-            ?? [];
+               .ToImmutableArray();
 
     public ImmutableArray<ComponentField> ComponentFields { get; init; } = GetComponentFields(id);
 
@@ -58,8 +58,9 @@ internal class ComponentMeta(ComponentID id)
         .GetTypes()
         .Append(typeof(EditorName))
         .Where(t => t.IsAssignableTo(typeof(IComponentBase)))
-        .Select(t => new ComponentMeta(Component.GetComponentID(t)))
-        .ToImmutableArray();
+        .Select(t => t.IsGenericType ? null : new ComponentMeta(Component.GetComponentID(t)))
+        .Where(t => t is not null)
+        .ToImmutableArray()!;
 
     public static readonly FrozenDictionary<ComponentID, ComponentMeta> ComponentMetaTable = Components.ToFrozenDictionary(k => k.ID);
 }

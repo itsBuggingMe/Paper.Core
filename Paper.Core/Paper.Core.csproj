@@ -6,6 +6,9 @@
     <RootNamespace>Paper.Core</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="Editor\Converters\EntityFieldConverter.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Frent" Version="0.7.1-beta" />
     <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.4" />
