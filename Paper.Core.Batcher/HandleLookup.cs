@@ -1,9 +1,11 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace Paper.Core.Batcher;
 
-internal struct HandleLookup(Rectangle bounds, Vector2 tL, Vector2 tR, Vector2 bL, Vector2 bR)
+internal struct HandleLookup(Texture2D texture, Rectangle bounds, Vector2 tL, Vector2 tR, Vector2 bL, Vector2 bR)
 {
+    public Texture2D OriginalTexture = texture;
     public Rectangle Bounds = bounds;
     public Vector2 TL = tL;
     public Vector2 TR = tR;

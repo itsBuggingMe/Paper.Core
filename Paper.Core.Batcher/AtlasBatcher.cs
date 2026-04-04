@@ -1,16 +1,17 @@
-﻿using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework;
-using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics;
-using STVector = System.Numerics.Vector2;
-using STMatrix = System.Numerics.Matrix4x4;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System.Data;
+using System;
 using System.Buffers;
+using System.Data;
+using System.Diagnostics;
+using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using STMatrix = System.Numerics.Matrix4x4;
+using STVector = System.Numerics.Vector2;
 
 
 namespace Paper.Core.Batcher;
@@ -27,7 +28,7 @@ public class AtlasBatcher
 
     internal readonly int Id = Interlocked.Increment(ref _nextId);
 
-    public Texture2D _atlas;
+    private Texture2D _atlas;
     private SkylinePacker _packer;
     private HandleLookup[] _handleLookup = [];
     private Stack<(Texture2D Texture, Rectangle AtlasBounds, bool NeedsDispose)> _texturesToBuild = [];
@@ -42,12 +43,22 @@ public class AtlasBatcher
     private uint[] _indicies;
     private int _nextVertexIndex;
 
+    public IReadOnlyDictionary<string, TextureHandle> TextureHandles => _textureHandles;
+    private Dictionary<string, TextureHandle> _textureHandles = [];
+
     public Vector2 GetTextureSize(TextureHandle handle)
     {
         if (handle.BatcherId != Id)
             ThrowInvalidTextureHandle();
         ref var metadata = ref _handleLookup[handle.Value];
         return (metadata.BR - metadata.TL) * _atlas.Bounds.Size.ToVector2();
+    }
+
+    public Texture2D GetTexture(TextureHandle handle)
+    {
+        if (handle.BatcherId != Id)
+            ThrowInvalidTextureHandle();
+        return _handleLookup[handle.Value].OriginalTexture;
     }
 
     public AtlasBatcher(
@@ -84,7 +95,10 @@ public class AtlasBatcher
         ref HandleLookup coordToSet = ref TextureHelper.GetValueOrResize(ref _handleLookup, result.Value);
 
         if (coordToSet.IsDefault)
+        {
             InitalizeTextureCoordsFor(texture, ref coordToSet);
+            _textureHandles.Add(texture.Name, result);
+        }
 
         return result;
     }
@@ -232,6 +246,7 @@ public class AtlasBatcher
 
         _texturesToBuild.Push((texture2D, atlasBounds, false));
 
+        coords.OriginalTexture = texture2D;
         coords.Bounds = atlasBounds;
 
         SetTextCoords(ref coords, Vector2.One / _atlas.Bounds.Size.ToVector2());

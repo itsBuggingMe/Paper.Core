@@ -11,6 +11,7 @@ using System.Collections.Generic;
 namespace Paper.Core.Editor;
 public class ImguiEditor
 {
+    public ImGuiRenderer Renderer => _imGuiRenderer;
     private readonly ImGuiRenderer _imGuiRenderer;
     private readonly Game _game;
     private readonly World _target;

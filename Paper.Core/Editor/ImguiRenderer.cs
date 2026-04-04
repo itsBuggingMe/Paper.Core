@@ -33,6 +33,7 @@ public class ImGuiRenderer
 
     // Textures
     private Dictionary<nint, Texture2D> _loadedTextures;
+    private Dictionary<Texture2D, nint> _textureIds;
 
     private int _textureId;
     private nint? _fontTextureId;
@@ -52,6 +53,7 @@ public class ImGuiRenderer
         _graphicsDevice = game.GraphicsDevice;
 
         _loadedTextures = new Dictionary<nint, Texture2D>();
+        _textureIds = new Dictionary<Texture2D, nint>();
 
         _rasterizerState = new RasterizerState()
         {
@@ -101,9 +103,13 @@ public class ImGuiRenderer
     /// </summary>
     public virtual nint BindTexture(Texture2D texture)
     {
+        if (_textureIds.TryGetValue(texture, out var oldId))
+            return oldId;
+
         var id = new nint(_textureId++);
 
         _loadedTextures.Add(id, texture);
+        _textureIds.Add(texture, id);
 
         return id;
     }
@@ -113,7 +119,9 @@ public class ImGuiRenderer
     /// </summary>
     public virtual void UnbindTexture(nint textureId)
     {
+        Texture2D texture = _loadedTextures[textureId];
         _loadedTextures.Remove(textureId);
+        _textureIds.Remove(texture);
     }
 
     /// <summary>

@@ -12,7 +12,7 @@ using System.Linq;
 using System.Reflection;
 
 namespace Paper.Core.Editor;
-internal class ComponentMeta(ComponentID id)
+public class ComponentMeta(ComponentID id)
 {
     public string Name { get; private set; } = id.Type.Name;
     public string Description { get; private set; } = id.Type.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "<no description>";
