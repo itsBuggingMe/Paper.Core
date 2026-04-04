@@ -66,7 +66,9 @@ public class ImguiEditor
             | ImGuiWindowFlags.NoMove
             | ImGuiWindowFlags.NoCollapse
             | ImGuiWindowFlags.NoBringToDisplayOnFocus
-            | ImGuiWindowFlags.NoSavedSettings;
+            | ImGuiWindowFlags.NoSavedSettings
+            | ImGuiWindowFlags.NoScrollbar
+            | ImGuiWindowFlags.NoScrollWithMouse;
 
         if (ImGui.Begin("##LeftPanel", windowFlags))
         {
@@ -91,6 +93,10 @@ public class ImguiEditor
             ImGui.BeginChild("##EntityDetails", new System.Numerics.Vector2(-1, bottomHeight));
             DrawEntityDetailsContent();
             ImGui.EndChild();
+
+            // Override the resize-grip cursor: since height is locked only width changes,
+            // so ResizeEW is more accurate than the default ResizeNWSE.
+            OverrideResizeGripCursor();
         }
         ImGui.End();
     }
@@ -106,6 +112,21 @@ public class ImguiEditor
             new System.Numerics.Vector2(winPos.X + winSize.X - 1f, winPos.Y),
             new System.Numerics.Vector2(winPos.X + winSize.X - 1f, winPos.Y + winSize.Y),
             col, 2f);
+    }
+
+    private void OverrideResizeGripCursor()
+    {
+        // Place a transparent button over the resize grip so we can show ResizeEW instead
+        // of the default ResizeNWSE (height is locked, so only width ever changes).
+        float gripSize = ImGui.GetStyle().GrabMinSize + 4f;
+        var winPos = ImGui.GetWindowPos();
+        var winSize = ImGui.GetWindowSize();
+        ImGui.SetCursorScreenPos(new System.Numerics.Vector2(
+            winPos.X + winSize.X - gripSize,
+            winPos.Y + winSize.Y - gripSize));
+        ImGui.InvisibleButton("##ResizeGripCursorOverride", new System.Numerics.Vector2(gripSize, gripSize));
+        if (ImGui.IsItemHovered())
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
     }
 
     private void DrawHorizontalSplitter(float totalAvailHeight)
@@ -145,6 +166,8 @@ public class ImguiEditor
     {
         ImGui.SeparatorText("Entities");
 
+        ImGui.PushStyleVar(ImGuiStyleVar.ButtonTextAlign, new System.Numerics.Vector2(0f, 0.5f));
+
         foreach (var (entity, name) in _allNamedEntities.EnumerateWithEntities<EditorName>())
         {
             if (ImGui.Button(name.Value.Name, ButtonSize))
@@ -157,6 +180,8 @@ public class ImguiEditor
             if (ImGui.Button($"{entityID}, {string.Join(',', entity.ComponentTypes.Select(s => s.Type.Name))}", ButtonSize))
                 _selectedEntity = entity;
         }
+
+        ImGui.PopStyleVar();
     }
 
     private void DrawEntityDetailsContent()
