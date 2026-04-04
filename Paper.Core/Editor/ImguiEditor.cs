@@ -6,6 +6,7 @@ using System;
 using Frent.Marshalling;
 using Frent.Core;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Paper.Core.Editor;
 public class ImguiEditor
@@ -20,14 +21,14 @@ public class ImguiEditor
     private float _targetScaling = 1;
     private Entity _selectedEntity;
 
-    private float _leftPanelWidth = 320f;
+    private float _leftPanelWidth = 1000f;
     private float _splitterRatio = 0.45f;
     private const float SplitterThickness = 5f;
 
     private System.Numerics.Vector2 ButtonSize =>
         new System.Numerics.Vector2(_leftPanelWidth - ImGui.GetStyle().WindowPadding.X * 2f, 20 * _targetScaling);
 
-    public ImguiEditor(Game game, World world)
+    public ImguiEditor(Game game, World world, IEnumerable<IFieldModifer> fieldEditorTypes)
     {
         _game = game;
         _target = world;
@@ -40,6 +41,9 @@ public class ImguiEditor
         _imGuiRenderer.RebuildFontAtlas();
         UpdateScaling();
         game.Window.ClientSizeChanged += (s, e) => UpdateScaling();
+
+        foreach(var f in fieldEditorTypes)
+            ComponentMeta.FieldModifierTable.Add(f.FieldType, f);
     }
 
     public void Draw(GameTime gameTime)
@@ -56,7 +60,7 @@ public class ImguiEditor
         float screenWidth = io.DisplaySize.X;
 
         ImGui.SetNextWindowPos(new System.Numerics.Vector2(0, 0), ImGuiCond.Always);
-        // Lock height to full screen; allow user to drag the resize grip to change width only.
+
         ImGui.SetNextWindowSizeConstraints(
             new System.Numerics.Vector2(120f, screenHeight),
             new System.Numerics.Vector2(screenWidth * 0.8f, screenHeight));
@@ -65,68 +69,30 @@ public class ImguiEditor
         var windowFlags = ImGuiWindowFlags.NoTitleBar
             | ImGuiWindowFlags.NoMove
             | ImGuiWindowFlags.NoCollapse
-            | ImGuiWindowFlags.NoBringToDisplayOnFocus
+            | ImGuiWindowFlags.NoBringToFrontOnFocus
             | ImGuiWindowFlags.NoSavedSettings
             | ImGuiWindowFlags.NoScrollbar
             | ImGuiWindowFlags.NoScrollWithMouse;
 
         if (ImGui.Begin("##LeftPanel", windowFlags))
         {
-            // Keep _leftPanelWidth in sync so ButtonSize stays accurate.
             _leftPanelWidth = ImGui.GetWindowSize().X;
-
-            DrawResizeHint();
 
             var avail = ImGui.GetContentRegionAvail();
             float topHeight = MathF.Max(20f, avail.Y * _splitterRatio - SplitterThickness * 0.5f);
             float bottomHeight = MathF.Max(20f, avail.Y - topHeight - SplitterThickness);
 
-            // ---- Entity list (top child) ----
             ImGui.BeginChild("##EntityList", new System.Numerics.Vector2(-1, topHeight));
             DrawEntityListContent();
             ImGui.EndChild();
 
-            // ---- Horizontal splitter ----
             DrawHorizontalSplitter(avail.Y);
 
-            // ---- Entity inspector (bottom child) ----
             ImGui.BeginChild("##EntityDetails", new System.Numerics.Vector2(-1, bottomHeight));
             DrawEntityDetailsContent();
             ImGui.EndChild();
-
-            // Override the resize-grip cursor: since height is locked only width changes,
-            // so ResizeEW is more accurate than the default ResizeNWSE.
-            OverrideResizeGripCursor();
         }
         ImGui.End();
-    }
-
-    private void DrawResizeHint()
-    {
-        // Draw a subtle line on the right edge of the panel to signal it is resizable.
-        var drawList = ImGui.GetWindowDrawList();
-        var winPos = ImGui.GetWindowPos();
-        var winSize = ImGui.GetWindowSize();
-        uint col = ImGui.GetColorU32(ImGuiCol.Separator);
-        drawList.AddLine(
-            new System.Numerics.Vector2(winPos.X + winSize.X - 1f, winPos.Y),
-            new System.Numerics.Vector2(winPos.X + winSize.X - 1f, winPos.Y + winSize.Y),
-            col, 2f);
-    }
-
-    private void OverrideResizeGripCursor()
-    {
-        // Place a transparent button over the resize grip so we can show ResizeEW instead
-        // of the default ResizeNWSE (height is locked, so only width ever changes).
-        float gripSize = ImGui.GetStyle().GrabMinSize + 4f;
-        var winPos = ImGui.GetWindowPos();
-        var winSize = ImGui.GetWindowSize();
-        ImGui.SetCursorScreenPos(new System.Numerics.Vector2(
-            winPos.X + winSize.X - gripSize,
-            winPos.Y + winSize.Y - gripSize));
-        ImGui.InvisibleButton("##ResizeGripCursorOverride", new System.Numerics.Vector2(gripSize, gripSize));
-        if (ImGui.IsItemHovered())
-            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
     }
 
     private void DrawHorizontalSplitter(float totalAvailHeight)
@@ -149,7 +115,6 @@ public class ImguiEditor
             _splitterRatio = Math.Clamp(_splitterRatio + delta, 0.1f, 0.9f);
         }
 
-        // Tint the splitter strip slightly when hot/active.
         uint col = active
             ? ImGui.GetColorU32(ImGuiCol.SeparatorActive)
             : hovered
@@ -204,7 +169,7 @@ public class ImguiEditor
 
             foreach (var fieldData in metadata.ComponentFields)
             {
-                if (ComponentMeta.FieldModifierTable.TryGetValue(fieldData.Type, out var intf))
+                if (ComponentMeta.GetFieldModifer(fieldData.Type) is { } intf)
                 {
                     ImGui.PushID(fieldData.Name);
                     intf.Entity = _selectedEntity;
@@ -214,7 +179,7 @@ public class ImguiEditor
                 }
                 else
                 {
-                    ImGui.Text($"<Missing Field Modifier For {fieldData.Name}>");
+                    ImGui.Text($"<Missing Field Modifier For {fieldData.Type.Name}>");
                 }
             }
         }

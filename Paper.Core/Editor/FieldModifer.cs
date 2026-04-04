@@ -5,8 +5,8 @@ using System.Collections.Generic;
 using Frent;
 
 namespace Paper.Core.Editor;
-
-internal interface IFieldModifer
+// TODO: fix nullability?
+public interface IFieldModifer
 {
     public Entity Entity { set; }
     public ComponentField FieldToModify { set; }
@@ -14,7 +14,7 @@ internal interface IFieldModifer
     void UpdateUI();
 }
 
-internal abstract class FieldModifierBase<T> : IFieldModifer
+public abstract class FieldModifierBase<T> : IFieldModifer
 {
     public FieldModifierBase() : this(EqualityComparer<T>.Default)
     {
@@ -51,7 +51,7 @@ internal abstract class FieldModifierBase<T> : IFieldModifer
     public Type FieldType => typeof(T);
 
     private readonly EqualityComparer<T> _comparer;
-    private object _cachedBox;
+    private object? _cachedBox;
     protected T _current;
 
     public void UpdateUI()
@@ -61,9 +61,9 @@ internal abstract class FieldModifierBase<T> : IFieldModifer
             //never actually ended up caching the box...
             _cachedBox = FieldToModify.GetValue(Entity.Get(FieldToModify.ComponentID));
             _current = (T)_cachedBox;
-
+            var oldCurrent = _current;
             T updatedValue = UpdateValue(FieldToModify);
-            if (!EqualityComparer<T>.Default.Equals(updatedValue, _current))
+            if (!EqualityComparer<T>.Default.Equals(updatedValue, oldCurrent))
             {
                 _current = updatedValue;
                 _cachedBox = updatedValue;

@@ -12,3 +12,8 @@ public class DescriptionAttribute(string description) : Attribute
 }
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
 public class EditorInclude : Attribute;
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class FieldEditor(Type type) : Attribute
+{
+    public Type Type { get; set; } = type;
+}

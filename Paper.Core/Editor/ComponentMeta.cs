@@ -2,6 +2,7 @@
 using Frent.Components;
 using Frent.Core;
 using Microsoft.Xna.Framework;
+using Paper.Core.Editor.Converters;
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
@@ -30,7 +31,7 @@ internal class ComponentMeta(ComponentID id)
     public static readonly Dictionary<Type, IFieldModifer> FieldModifierTable = typeof(ComponentMeta)
         .Assembly
         .GetTypes()
-        .Where(t => t.IsAssignableTo(typeof(IFieldModifer)) && !t.IsAbstract && !t.IsInterface)
+        .Where(t => t.IsAssignableTo(typeof(IFieldModifer)) && !t.IsAbstract && !t.IsInterface && !t.IsGenericTypeDefinition)
         .Select(t => (IFieldModifer)Activator.CreateInstance(t)!)
         .ToDictionary(k => k.FieldType);
 
@@ -57,6 +58,24 @@ internal class ComponentMeta(ComponentID id)
 
     private static readonly Dictionary<ComponentID, ComponentMeta> s_componentMetaTableCache = [];
 
+    public static IFieldModifer? GetFieldModifer(Type fieldType)
+    {
+        if (FieldModifierTable.TryGetValue(fieldType, out var cachedMetadata))
+            return cachedMetadata;
+
+        if (fieldType.IsEnum)
+        {
+            FieldModifierTable.Add(fieldType, (IFieldModifer?)Activator.CreateInstance(typeof(EnumFieldConverter<>).MakeGenericType(fieldType)) ?? throw new Exception("Unable to create enum converter."));
+        }
+
+        if (Nullable.GetUnderlyingType(fieldType) is Type underlyingType)
+        {
+            FieldModifierTable.Add(fieldType, (IFieldModifer?)Activator.CreateInstance(typeof(NullableFieldConverter<>).MakeGenericType(underlyingType)) ?? throw new Exception("Unable to create enum converter."));
+        }
+
+        return null;
+    }
+
     public static ComponentMeta GetComponentMeta(ComponentID componentType)
     {
         if (s_componentMetaTableCache.TryGetValue(componentType, out var cachedMetadata))
@@ -68,7 +87,7 @@ internal class ComponentMeta(ComponentID id)
     }
 }
 
-internal class ComponentField
+public class ComponentField
 {
     public ComponentField(ComponentID id, FieldInfo info)
     {
