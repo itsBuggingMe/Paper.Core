@@ -1,13 +1,14 @@
-﻿using System.Collections.Immutable;
-using Frent.Core;
+﻿using Frent;
 using Frent.Components;
-using System.Linq;
-using System;
+using Frent.Core;
 using Microsoft.Xna.Framework;
-using System.Reflection;
-using System.Diagnostics;
+using System;
 using System.Collections.Frozen;
-using Frent;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
 
 namespace Paper.Core.Editor;
 internal class ComponentMeta(ComponentID id)
@@ -15,13 +16,6 @@ internal class ComponentMeta(ComponentID id)
     public string Name { get; private set; } = id.Type.Name;
     public string Description { get; private set; } = id.Type.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "<no description>";
     public ComponentID ID { get; private set; } = id;
-
-    public static readonly FrozenDictionary<Type, IFieldModifer> FieldModifierTable = typeof(ComponentMeta)
-        .Assembly
-        .GetTypes()
-        .Where(t => t.IsAssignableTo(typeof(IFieldModifer)) && !t.IsAbstract && !t.IsInterface)
-        .Select(t => (IFieldModifer)Activator.CreateInstance(t)!)
-        .ToFrozenDictionary(k => k.FieldType);
 
     public ImmutableArray<ComponentID> Arguments { get; private set; } =
         id.Type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
@@ -32,6 +26,13 @@ internal class ComponentMeta(ComponentID id)
                .ToImmutableArray();
 
     public ImmutableArray<ComponentField> ComponentFields { get; init; } = GetComponentFields(id);
+
+    public static readonly Dictionary<Type, IFieldModifer> FieldModifierTable = typeof(ComponentMeta)
+        .Assembly
+        .GetTypes()
+        .Where(t => t.IsAssignableTo(typeof(IFieldModifer)) && !t.IsAbstract && !t.IsInterface)
+        .Select(t => (IFieldModifer)Activator.CreateInstance(t)!)
+        .ToDictionary(k => k.FieldType);
 
     private static ImmutableArray<ComponentField> GetComponentFields(ComponentID id)
     {
@@ -54,15 +55,17 @@ internal class ComponentMeta(ComponentID id)
             .ToImmutableArray();
     }
 
-    public static readonly ImmutableArray<ComponentMeta> Components = Assembly.GetEntryAssembly()!
-        .GetTypes()
-        .Append(typeof(EditorName))
-        .Where(t => t.IsAssignableTo(typeof(IComponentBase)))
-        .Select(t => t.IsGenericType ? null : new ComponentMeta(Component.GetComponentID(t)))
-        .Where(t => t is not null)
-        .ToImmutableArray()!;
+    private static readonly Dictionary<ComponentID, ComponentMeta> s_componentMetaTableCache = [];
 
-    public static readonly FrozenDictionary<ComponentID, ComponentMeta> ComponentMetaTable = Components.ToFrozenDictionary(k => k.ID);
+    public static ComponentMeta GetComponentMeta(ComponentID componentType)
+    {
+        if (s_componentMetaTableCache.TryGetValue(componentType, out var cachedMetadata))
+            return cachedMetadata;
+
+        ComponentMeta componentMeta = new(componentType);
+        s_componentMetaTableCache.Add(componentType, componentMeta);
+        return componentMeta;
+    }
 }
 
 internal class ComponentField

@@ -22,9 +22,12 @@ public class ImguiEditor
     private readonly Query _allNamedEntities;
     private readonly Query _allUnnamedEntities;
 
-    private ComponentEditorInfo? _componentEditor;
-
     private float _targetScaling = 1;
+
+    private Entity _selectedEntity;
+
+    private System.Numerics.Vector2 ButtonSize => new System.Numerics.Vector2(SizePanelWidth, 20 * _targetScaling);
+    private float SizePanelWidth = 512;
 
     public ImguiEditor(Game game, World world)
     {
@@ -49,32 +52,38 @@ public class ImguiEditor
         _imGuiRenderer.BeforeLayout(gameTime);
 
         EntitiesWindow();
-        ComponentEditorWindow();
+        EntityWindow();
 
         _imGuiRenderer.AfterLayout();
     }
 
-    private void ComponentEditorWindow()
+    private void EntityWindow()
     {
-        if (_componentEditor is not { } info)
+        if (_selectedEntity.IsNull)
             return;
 
-        const string ComponentEditor = "Component Editor";
-
-        if (ImGui.Begin(ComponentEditor))
+        
+        if (ImGui.Begin($"Entity: {EntityMarshal.EntityID(_selectedEntity)}"))
         {
-            ImGui.SeparatorText(info.Component.Type.Name);
-
-            ComponentMeta metadata = ComponentMeta.ComponentMetaTable[info.Component];
-            foreach (var fieldData in metadata.ComponentFields)
+            foreach (var componentID in _selectedEntity.ComponentTypes)
             {
-                if (ComponentMeta.FieldModifierTable.TryGetValue(fieldData.Type, out var intf))
+                ImGui.SeparatorText(componentID.Type.Name);
+                var metadata = ComponentMeta.GetComponentMeta(componentID);
+
+                foreach (var fieldData in metadata.ComponentFields)
                 {
-                    ImGui.PushID(fieldData.Name);
-                    intf.Entity = info.Target;
-                    intf.FieldToModify = fieldData;
-                    intf.UpdateUI();
-                    ImGui.PopID();
+                    if (ComponentMeta.FieldModifierTable.TryGetValue(fieldData.Type, out var intf))
+                    {
+                        ImGui.PushID(fieldData.Name);
+                        intf.Entity = _selectedEntity;
+                        intf.FieldToModify = fieldData;
+                        intf.UpdateUI();
+                        ImGui.PopID();
+                    }
+                    else
+                    {
+                        ImGui.Text($"<Missing Field Modifier For {fieldData.Name}>");
+                    }
                 }
             }
         }
@@ -91,53 +100,34 @@ public class ImguiEditor
 
         foreach(var (entity, name) in _allNamedEntities.EnumerateWithEntities<EditorName>())
         {
-            if(ImGui.CollapsingHeader(name.Value.Name))
+            if(ImGui.Button(name.Value.Name, ButtonSize))
             {
-                DisplayEntityInfo(entity);
+                _selectedEntity = entity;
             }
         }
 
 
-        const string Prefix = "ID: ";
-        Span<char> nameBuffer = stackalloc char[16];
-        Prefix.CopyTo(nameBuffer);
+        //const string Prefix = "ID: ";
+        //Span<char> nameBuffer = stackalloc char[128];
+        //Prefix.CopyTo(nameBuffer);
 
         foreach (var entity in _allUnnamedEntities.EnumerateWithEntities())
         {
             int entityID = EntityMarshal.EntityID(entity);
-            entityID.TryFormat(nameBuffer[Prefix.Length..], out int charsWritten);
-
-            if (ImGui.CollapsingHeader(nameBuffer[..(Prefix.Length + charsWritten)]))
+            //entityID.TryFormat(nameBuffer[Prefix.Length..], out int charsWritten);
+            //nameBuffer[..(Prefix.Length + charsWritten)]
+            if (ImGui.Button($"{entityID}, {string.Join(',', entity.ComponentTypes.Select(s => s.Type.Name))}", ButtonSize))
             {
-                DisplayEntityInfo(entity);
+                _selectedEntity = entity;
             }
         }
 
         ImGui.End();
     }
 
-    private void DisplayEntityInfo(Entity entity)
-    {
-        foreach (var component in entity.ComponentTypes)
-        {
-            if (ImGui.Button(component.Type.Name))
-            {
-                _componentEditor = new ComponentEditorInfo(entity, component);
-            }
-        }
-
-        if (entity.TagTypes.Length == 0)
-            return;
-
-        ImGui.SeparatorText("Tags");
-
-        foreach (var item in entity.TagTypes)
-            ImGui.Text(item.Type.Name);
-    }
-
     private void UpdateScaling()
     {
-        float scale = _game.Window.ClientBounds.Size.ToVector2().Length() / new Vector2(1920, 1080).Length() * 2;
+        float scale = _game.Window.ClientBounds.Size.ToVector2().Length() / new Vector2(1920, 1080).Length();
 
         var styles = ImGui.GetStyle();
 
@@ -152,6 +142,4 @@ public class ImguiEditor
             _targetScaling = scale;
         }
     }
-
-    private record struct ComponentEditorInfo(Entity Target, ComponentID Component);
 }
