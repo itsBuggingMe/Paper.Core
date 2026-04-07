@@ -459,6 +459,15 @@ public class AtlasBatcher
                 BR = Unsafe.BitCast<Vector64<float>, STVector>(upper.GetUpper());
             }
 
+            var tl = TL;
+            var width = TR - TL;
+            var height = BL - TL;
+            var newWidth = width * multipler.X;
+            var newHeight = height * multipler.Y;
+            TR = tl + newWidth;
+            BL = tl + newHeight;
+            BR = tl + newWidth + newHeight;
+
             return this;
         }
 

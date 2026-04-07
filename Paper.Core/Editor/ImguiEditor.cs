@@ -20,7 +20,7 @@ public class ImguiEditor
     private readonly Query _allUnnamedEntities;
 
     private float _targetScaling = 1;
-    private Entity _selectedEntity;
+    public Entity SelectedEntity { get; set; }
 
     private float _leftPanelWidth = 1000f;
     private float _splitterRatio = 0.45f;
@@ -137,14 +137,14 @@ public class ImguiEditor
         foreach (var (entity, name) in _allNamedEntities.EnumerateWithEntities<EditorName>())
         {
             if (ImGui.Button(name.Value.Name, ButtonSize))
-                _selectedEntity = entity;
+                SelectedEntity = entity;
         }
 
         foreach (var entity in _allUnnamedEntities.EnumerateWithEntities())
         {
             int entityID = EntityMarshal.EntityID(entity);
             if (ImGui.Button($"{entityID}, {string.Join(',', entity.ComponentTypes.Select(s => s.Type.Name))}", ButtonSize))
-                _selectedEntity = entity;
+                SelectedEntity = entity;
         }
 
         ImGui.PopStyleVar();
@@ -152,18 +152,24 @@ public class ImguiEditor
 
     private void DrawEntityDetailsContent()
     {
-        if (_selectedEntity.IsNull)
+        if (!SelectedEntity.IsAlive)
         {
             ImGui.SeparatorText("Inspector");
             ImGui.Spacing();
             ImGui.TextDisabled("No entity selected.");
-            ImGui.TextDisabled("Click an entity above to inspect it.");
+            ImGui.TextDisabled("Click an entity to inspect it.");
             return;
         }
 
-        ImGui.SeparatorText($"Entity {EntityMarshal.EntityID(_selectedEntity)}");
+        ImGui.SeparatorText($"Entity {EntityMarshal.EntityID(SelectedEntity)}");
 
-        foreach (var componentID in _selectedEntity.ComponentTypes)
+        if (ImGui.Button("Delete"))
+        {
+            SelectedEntity.Delete();
+            return;
+        }
+
+        foreach (var componentID in SelectedEntity.ComponentTypes)
         {
             ImGui.SeparatorText(componentID.Type.Name);
             var metadata = ComponentMeta.GetComponentMeta(componentID);
@@ -173,7 +179,7 @@ public class ImguiEditor
                 if (ComponentMeta.GetFieldModifer(fieldData.Type) is { } intf)
                 {
                     ImGui.PushID(fieldData.Name);
-                    intf.Entity = _selectedEntity;
+                    intf.Entity = SelectedEntity;
                     intf.FieldToModify = fieldData;
                     intf.UpdateUI();
                     ImGui.PopID();

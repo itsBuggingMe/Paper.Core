@@ -21,7 +21,7 @@ public class GraphicsBase
         GraphicsDeviceManager = graphicsDeviceManager;
         GraphicsDevice = graphicsDeviceManager.GraphicsDevice;
         SpriteBatch = new SpriteBatch(GraphicsDevice);
-        WhitePixel = new Texture2D(GraphicsDevice, 1, 1);
+        WhitePixel = new Texture2D(GraphicsDevice, 1, 1) { Name = "WhitePixel" };
         Camera = new Camera2D(GraphicsDevice);
         WhitePixel.SetData([Color.White]);
         SpriteFont? second = null;
