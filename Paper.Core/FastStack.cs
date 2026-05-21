@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 
 namespace Paper.Core;
 
-public struct FastStack<T>(int capacity)
+public struct FastStack<T>(int capacity) where T : notnull
 {
     private T[] _buffer = new T[capacity];
     private int _nextIndex;
