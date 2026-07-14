@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net11.0</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <RootNamespace>Paper.Core</RootNamespace>
+	<LangVersion>preview</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <None Include="Editor\Converters\EntityFieldConverter.cs" />

@@ -1,19 +1,26 @@
-﻿using System;
+﻿using Frent;
+using Frent.Core;
+using System;
 
 namespace Paper.Core.Editor;
 
-/* * * * * * * * * * * * *
- *  Components by default include all public properties, except when excluded. When EditorInclude is used, only ones with editor include are used.
- * * * * * * * * * * * * */
-[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Struct | AttributeTargets.Class)]
-public class DescriptionAttribute(string description) : Attribute
+public abstract class ConverterAttribute : Attribute
 {
-    public string Description { get; set; } = description;
+    public abstract void Display(Entity entity, ComponentID component, EditorMember member);
 }
+
+
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public class EditorInclude : Attribute;
-[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public class FieldEditor(Type type) : Attribute
+public abstract class ConverterAttribute<T> : ConverterAttribute
 {
-    public Type Type { get; set; } = type;
+    public void Display(Entity entity, ComponentID component, EditorMember member)
+    {
+        Display(entity, component, member);
+    }
+
+    protected abstract void Display(Entity entity, ComponentID component, EditorMember<T> member);
 }
+
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class EditorIgnore : Attribute;
