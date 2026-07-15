@@ -2,6 +2,7 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
@@ -14,67 +15,54 @@ public class EditorMember<TContainingType, T> : EditorMember
     {
         get
         {
-            ValidateContainingType(in _containingType);
-            return _getter(_containingType);
+            ValidateContainingType(in _boxContainingType.Value);
+            return _getter(ref _boxContainingType.Value);
         }
         set
         {
             if (_setter is null)
                 throw new InvalidOperationException("Property is read only.");
-            ValidateContainingType(in _containingType);
-            _setter(_containingType, value);
+            ValidateContainingType(in _boxContainingType.Value);
+            _setter(ref _boxContainingType.Value, value);
         }
     }
 
-    private TContainingType? _containingType;
-
-    private readonly Func<TContainingType, T?> _getter;
-    private readonly Action<TContainingType, T?>? _setter;
-    private object? _cachedBoxT = default(T);
+    private readonly GetValue _getter;
+    private readonly SetValue? _setter;
+    private readonly StrongBox<TContainingType> _boxContainingType = new StrongBox<TContainingType>();
 
     public EditorMember(EditorMemberInfo info) : base(info)
     {
+        FieldInfo[]? innerFields = null;
+        
         _getter = info switch
         {
-            PropertyInfo p => (p.GetGetMethod() ?? throw new ArgumentException("Editor members must be at least readable.")).CreateDelegate<Func<TContainingType, T>>(),
-            FieldInfo f => ((containing) =>
+            PropertyInfo p => p.GetGetMethod()?.CreateDelegate<GetValue>()
+                ?? throw new ArgumentException("Editor members must be at least readable."),
+            FieldInfo f => (ref containing) =>
             {
-                T tOnStack = default!;
-                TypedReference @ref = __makeref(tOnStack);
-                if(f.GetValueDirect(@ref) is T t)
-                {
-                    tOnStack = t;
-                }
-                return tOnStack;
-            }),
+                innerFields ??= [StrongBoxField, f];
+                _boxContainingType.Value = containing!;
+                return __refvalue(TypedReference.MakeTypedReference(_boxContainingType, innerFields), T);
+            },
+            null => throw new ArgumentNullException(nameof(info)),
         };
 
-
-        Unbox? unboxer = null;
         _setter = info switch
         {
-            PropertyInfo p => p.GetSetMethod()?.CreateDelegate<Action<TContainingType, T?>>(),
-            FieldInfo f => (containing, value) =>
+            PropertyInfo p => p.GetSetMethod()?.CreateDelegate<SetValue>(),
+            FieldInfo f => (ref containing, value) =>
             {
-                if(typeof(T).IsValueType)
-                {
-                    unboxer ??= UnsafeUnboxMethodInfo.MakeGenericMethod(typeof(T)).CreateDelegate<Unbox>();
-                    unboxer(_cachedBoxT!) = value!;
-                }
-                else
-                {
-                    _cachedBoxT = value;
-                }
-                f.SetValueDirect(__makeref(_containingType), _cachedBoxT!);
+                innerFields ??= [StrongBoxField, f];
+                _boxContainingType.Value = containing!;
+                __refvalue(TypedReference.MakeTypedReference(_boxContainingType, innerFields), T) = value!;
             }
         };
     }
 
-    private delegate ref T Unbox(object o);
-
     public void Initalize(TContainingType containingType)
     {
-        _containingType = containingType;
+        _boxContainingType.Value = containingType;
     }
 
     private void ValidateContainingType([NotNull] in TContainingType? t)
@@ -82,20 +70,36 @@ public class EditorMember<TContainingType, T> : EditorMember
         if (!typeof(TContainingType).IsValueType && t is null)
             throw new InvalidOperationException("Call Initalize first!");
     }
+
+    private delegate void SetValue(ref TContainingType containingType, T? value);
+    private delegate T? GetValue(ref TContainingType containingType);
 }
 
-public readonly union EditorMemberInfo(PropertyInfo, FieldInfo);
+public union EditorMemberInfo(PropertyInfo, FieldInfo)
+{
+    public readonly Type? Type => Value switch
+    {
+        PropertyInfo p => p.PropertyType,
+        FieldInfo f => f.FieldType,
+        _ => null,
+    };
+
+    public readonly MemberInfo? AsMemberInfo() => Value as MemberInfo;
+}
 public abstract class EditorMember
 {
-    internal static readonly MethodInfo UnsafeUnboxMethodInfo = typeof(Unsafe)
-        .GetMethod("Unbox")!;
-
+    internal static readonly FieldInfo StrongBoxField = typeof(StrongBox<>)
+        .GetField("Value", BindingFlags.Public | BindingFlags.Instance)!;
     public bool IsReadOnly { get; set; }
     public EditorMemberInfo Member { get; set; }
     public string Name { get; }
     public int PositionalHash { get; }
+    public ConverterAttribute Converter { get; }
     public EditorMember(EditorMemberInfo memberInfo)
     {
+        if (memberInfo is null)
+            throw new ArgumentNullException(nameof(memberInfo));
+
         IsReadOnly = memberInfo switch
         {
             PropertyInfo p => !p.CanWrite,
@@ -105,5 +109,12 @@ public abstract class EditorMember
         Member = memberInfo;
         Name = ((MemberInfo)memberInfo.Value).Name;
         PositionalHash = Member.GetHashCode();
+        Converter = memberInfo!.AsMemberInfo()!
+                .CustomAttributes!
+                .Where(a => a.AttributeType.IsAssignableFrom(typeof(ConverterAttribute)))
+                .FirstOrDefault() ??
+                ComponentMetadata.DefaultConverterAttributeForType(memberInfo!.Type)!;
     }
+
+    
 }
