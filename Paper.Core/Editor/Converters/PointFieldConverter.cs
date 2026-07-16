@@ -1,13 +1,17 @@
-﻿using ImGuiNET;
+using Frent;
+using Frent.Core;
+using ImGuiNET;
 using Microsoft.Xna.Framework;
 
 namespace Paper.Core.Editor.Converters;
 
-internal class PointFieldConverter : FieldModifierBase<Point>
+[BuiltInConverter]
+internal class PointFieldConverter : ConverterAttribute<Point>
 {
-    protected override Point UpdateValue(ComponentField field)
+    protected override void Display(Entity entity, ComponentID component, EditorMember<Point> member)
     {
-        ImGui.InputInt2(field.Name, ref _current.X);
-        return _current;
+        Point value = member.Value;
+        if (ImGui.InputInt2(member.Name, ref value.X) && !member.IsReadOnly)
+            member.Value = value;
     }
 }

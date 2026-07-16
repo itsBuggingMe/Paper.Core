@@ -1,81 +1,90 @@
-﻿using Frent;
-using System;
-using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
+﻿using System;
 using System.Reflection;
-using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 
 namespace Paper.Core.Editor;
 
-public class EditorMember<TContainingType, T> : EditorMember
+public class EditorMember<T> : EditorMember
 {
     public T? Value
     {
         get
         {
-            ValidateContainingType(in _boxContainingType.Value);
-            return _getter(ref _boxContainingType.Value);
+            return _getter(_boxContainingType);
         }
         set
         {
             if (_setter is null)
                 throw new InvalidOperationException("Property is read only.");
-            ValidateContainingType(in _boxContainingType.Value);
-            _setter(ref _boxContainingType.Value, value);
+            _setter(_boxContainingType, value);
         }
     }
 
     private readonly GetValue _getter;
     private readonly SetValue? _setter;
-    private readonly StrongBox<TContainingType> _boxContainingType = new StrongBox<TContainingType>();
 
-    public EditorMember(EditorMemberInfo info) : base(info)
+    public EditorMember(EditorMemberInfo info, ConverterAttribute converter) : base(info, converter)
+    {
+        MemberInfo? memberInfo = info.AsMemberInfo();
+        ArgumentNullException.ThrowIfNull(memberInfo);
+        object initalizedDelegates = sr_initalizerUnbound
+            .MakeGenericMethod(memberInfo.DeclaringType ?? throw new ArgumentException("Member must not be of unbound generic type!"))
+            .Invoke(null, [info])!;
+        (_getter, _setter, _boxContainingType) = (ValueTuple<GetValue, SetValue, IStrongBox>)initalizedDelegates;
+    }
+
+    private delegate void SetValue(IStrongBox containingType, T? value);
+    private delegate T? GetValue(IStrongBox containingType);
+
+    private delegate void SetValueTyped<TContainingType>(ref TContainingType containingType, T? value);
+    private delegate T? GetValueTyped<TContainingType>(ref TContainingType containingType);
+
+    private static readonly MethodInfo sr_initalizerUnbound =
+        (MethodInfo)typeof(EditorMember<T>)
+        .GetMember("CreateDelegates", BindingFlags.NonPublic | BindingFlags.Static)[0];
+
+
+    private static (GetValue, SetValue?, IStrongBox) CreateDelegates<TContainingType>(EditorMemberInfo info)
     {
         FieldInfo[]? innerFields = null;
-        
-        _getter = info switch
+
+        GetValue getter = info switch
         {
-            PropertyInfo p => p.GetGetMethod()?.CreateDelegate<GetValue>()
-                ?? throw new ArgumentException("Editor members must be at least readable."),
-            FieldInfo f => (ref containing) =>
+            PropertyInfo p  when typeof(TContainingType).IsValueType && p.GetGetMethod()?.CreateDelegate<GetValueTyped<TContainingType>>() is { } s
+                => (sbox) => s(ref ((StrongBox<TContainingType>)sbox).Value!),
+            PropertyInfo p when p.GetGetMethod()?.CreateDelegate<Func<TContainingType?, T>>() is { } c
+                => (sbox) => c(((StrongBox<TContainingType>)sbox).Value),
+            FieldInfo f => (containing) =>
             {
                 innerFields ??= [StrongBoxField, f];
-                _boxContainingType.Value = containing!;
-                return __refvalue(TypedReference.MakeTypedReference(_boxContainingType, innerFields), T);
+                return __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T);
             },
-            null => throw new ArgumentNullException(nameof(info)),
+            _ => throw new ArgumentException("Editor members must be at least readable."),
         };
 
-        _setter = info switch
+        SetValue? setter = info switch
         {
-            PropertyInfo p => p.GetSetMethod()?.CreateDelegate<SetValue>(),
-            FieldInfo f => (ref containing, value) =>
+            PropertyInfo p when typeof(TContainingType).IsValueType && p.GetSetMethod()?.CreateDelegate<SetValueTyped<TContainingType>>() is { } s
+                => (sbox, val) => s(ref ((StrongBox<TContainingType>)sbox).Value!, val),
+            PropertyInfo p when p.GetSetMethod()?.CreateDelegate<Action<TContainingType, T?>>() is { } c => (sbox, val) =>
+            {
+                if (sbox is StrongBox<TContainingType> { Value: not null } typed)
+                    c(typed.Value, val);
+            }
+            ,
+            FieldInfo f => (containing, val) =>
             {
                 innerFields ??= [StrongBoxField, f];
-                _boxContainingType.Value = containing!;
-                __refvalue(TypedReference.MakeTypedReference(_boxContainingType, innerFields), T) = value!;
-            }
+                __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T?) = val;
+            },
+            _ => null,
         };
-    }
 
-    public void Initalize(TContainingType containingType)
-    {
-        _boxContainingType.Value = containingType;
+        return (getter, setter, new StrongBox<TContainingType>());
     }
-
-    private void ValidateContainingType([NotNull] in TContainingType? t)
-    {
-        if (!typeof(TContainingType).IsValueType && t is null)
-            throw new InvalidOperationException("Call Initalize first!");
-    }
-
-    private delegate void SetValue(ref TContainingType containingType, T? value);
-    private delegate T? GetValue(ref TContainingType containingType);
 }
 
-public union EditorMemberInfo(PropertyInfo, FieldInfo)
+public readonly union EditorMemberInfo(PropertyInfo, FieldInfo)
 {
     public readonly Type? Type => Value switch
     {
@@ -89,15 +98,17 @@ public union EditorMemberInfo(PropertyInfo, FieldInfo)
 public abstract class EditorMember
 {
     internal static readonly FieldInfo StrongBoxField = typeof(StrongBox<>)
-        .GetField("Value", BindingFlags.Public | BindingFlags.Instance)!;
+        .GetField("Value", BindingFlags.Public | BindingFlags.Instance)
+        ?? throw new Exception("Could not find Value field of StrongBox");
     public bool IsReadOnly { get; set; }
     public EditorMemberInfo Member { get; set; }
     public string Name { get; }
     public int PositionalHash { get; }
     public ConverterAttribute Converter { get; }
-    public EditorMember(EditorMemberInfo memberInfo)
+    protected IStrongBox _boxContainingType;
+    public EditorMember(EditorMemberInfo memberInfo, ConverterAttribute converterAttribute)
     {
-        if (memberInfo is null)
+        if (memberInfo.Value is not MemberInfo typedAsMemberInfo)
             throw new ArgumentNullException(nameof(memberInfo));
 
         IsReadOnly = memberInfo switch
@@ -107,14 +118,20 @@ public abstract class EditorMember
         };
 
         Member = memberInfo;
-        Name = ((MemberInfo)memberInfo.Value).Name;
+        Name = typedAsMemberInfo.Name;
         PositionalHash = Member.GetHashCode();
-        Converter = memberInfo!.AsMemberInfo()!
-                .CustomAttributes!
-                .Where(a => a.AttributeType.IsAssignableFrom(typeof(ConverterAttribute)))
-                .FirstOrDefault() ??
-                ComponentMetadata.DefaultConverterAttributeForType(memberInfo!.Type)!;
+        Converter = converterAttribute;
+        _boxContainingType = null!;
     }
 
-    
+    public void Initialize<TContainingType>(TContainingType? containingType)
+    {
+        ((StrongBox<TContainingType?>)_boxContainingType).Value = containingType;
+    }
+
+    public TContainingType? GetContainingValue<TContainingType>()
+    {
+        return ((StrongBox<TContainingType?>)_boxContainingType).Value;
+    }
+
 }

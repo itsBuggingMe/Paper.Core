@@ -1,17 +1,21 @@
+using Frent;
+using Frent.Core;
 using ImGuiNET;
+using System.Text;
 
 namespace Paper.Core.Editor.Converters;
 
-internal class StringFieldConverter : FieldModifierBase<string>
+[BuiltInConverter]
+internal class StringFieldConverter : ConverterAttribute<string>
 {
-    protected override string UpdateValue(ComponentField field)
+    protected override void Display(Entity entity, ComponentID component, EditorMember<string> member)
     {
-        string value = _current ?? string.Empty;
-        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(value + new string('\0', 256 - value.Length));
-        if (ImGui.InputText(field.Name, buffer, (uint)buffer.Length))
-        {
-            value = System.Text.Encoding.UTF8.GetString(buffer).TrimEnd('\0');
-        }
-        return value;
+        string current = member.Value ?? string.Empty;
+        int capacity = System.Math.Max(256, Encoding.UTF8.GetByteCount(current) + 1);
+        byte[] buffer = new byte[capacity];
+        Encoding.UTF8.GetBytes(current, buffer);
+
+        if (ImGui.InputText(member.Name, buffer, (uint)buffer.Length) && !member.IsReadOnly)
+            member.Value = Encoding.UTF8.GetString(buffer).TrimEnd('\0');
     }
 }

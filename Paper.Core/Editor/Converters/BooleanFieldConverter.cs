@@ -1,13 +1,16 @@
-﻿using ImGuiNET;
+using Frent;
+using Frent.Core;
+using ImGuiNET;
 
 namespace Paper.Core.Editor.Converters;
 
-internal class BoolFieldConverter : FieldModifierBase<bool>
+[BuiltInConverter]
+internal class BoolFieldConverter : ConverterAttribute<bool>
 {
-    protected override bool UpdateValue(ComponentField field)
+    protected override void Display(Entity entity, ComponentID component, EditorMember<bool> member)
     {
-        bool b = _current;
-        ImGui.Checkbox(field.Name, ref b);
-        return b;
+        bool value = member.Value;
+        if (ImGui.Checkbox(member.Name, ref value) && !member.IsReadOnly)
+            member.Value = value;
     }
 }

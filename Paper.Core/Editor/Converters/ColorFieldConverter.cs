@@ -1,20 +1,18 @@
-﻿using ImGuiNET;
+using Frent;
+using Frent.Core;
+using ImGuiNET;
 using Microsoft.Xna.Framework;
 
 namespace Paper.Core.Editor.Converters;
 
-internal class ColorFieldConverter : FieldModifierBase<Color>
+[BuiltInConverter]
+internal class ColorFieldConverter : ConverterAttribute<Color>
 {
-    protected override Color UpdateValue(ComponentField field)
+    protected override void Display(Entity entity, ComponentID component, EditorMember<Color> member)
     {
-        var v = _current.ToVector4();
-        System.Numerics.Vector4 f = new System.Numerics.Vector4(v.X, v.Y, v.X, v.Z);
-        ImGui.ColorPicker4(field.Name, ref f);
-        f *= 255;
-        return new Color(
-            (int)f.X, 
-            (int)f.Y, 
-            (int)f.X, 
-            (int)f.Z);
+        Vector4 current = member.Value.ToVector4();
+        System.Numerics.Vector4 value = new(current.X, current.Y, current.Z, current.W);
+        if (ImGui.ColorEdit4(member.Name, ref value) && !member.IsReadOnly)
+            member.Value = new Color(value);
     }
 }
