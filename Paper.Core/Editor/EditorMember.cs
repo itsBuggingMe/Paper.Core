@@ -22,6 +22,8 @@ public class EditorMember<T> : EditorMember
         }
     }
 
+    public override bool IsReadOnly => _setter is null;
+
     private readonly GetValue _getter;
     private readonly SetValue? _setter;
 
@@ -29,7 +31,7 @@ public class EditorMember<T> : EditorMember
     {
         MemberInfo? memberInfo = info.AsMemberInfo();
         ArgumentNullException.ThrowIfNull(memberInfo);
-        object initalizedDelegates = sr_initalizerUnbound
+        object initalizedDelegates = s_initalizerUnbound
             .MakeGenericMethod(memberInfo.DeclaringType ?? throw new ArgumentException("Member must not be of unbound generic type!"))
             .Invoke(null, [info])!;
         (_getter, _setter, _boxContainingType) = (ValueTuple<GetValue, SetValue, IStrongBox>)initalizedDelegates;
@@ -41,7 +43,7 @@ public class EditorMember<T> : EditorMember
     private delegate void SetValueTyped<TContainingType>(ref TContainingType containingType, T? value);
     private delegate T? GetValueTyped<TContainingType>(ref TContainingType containingType);
 
-    private static readonly MethodInfo sr_initalizerUnbound =
+    private static readonly MethodInfo s_initalizerUnbound =
         (MethodInfo)typeof(EditorMember<T>)
         .GetMember("CreateDelegates", BindingFlags.NonPublic | BindingFlags.Static)[0];
 
@@ -74,7 +76,7 @@ public class EditorMember<T> : EditorMember
                     c(typed.Value, val);
             }
             ,
-            FieldInfo f => (containing, val) =>
+            FieldInfo f when !f.IsInitOnly => (containing, val) =>
             {
                 innerFields ??= [StrongBoxFieldInfoOf<T>(), f];
                 __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T?) = val;
@@ -113,7 +115,7 @@ public abstract class EditorMember
     }
     
 
-    public bool IsReadOnly { get; set; }
+    public abstract bool IsReadOnly { get; }
     public EditorMemberInfo Member { get; set; }
     public string Name { get; }
     public int PositionalHash { get; }
@@ -123,12 +125,6 @@ public abstract class EditorMember
     {
         if (memberInfo.Value is not MemberInfo typedAsMemberInfo)
             throw new ArgumentNullException(nameof(memberInfo));
-
-        IsReadOnly = memberInfo switch
-        {
-            PropertyInfo p => !p.CanWrite,
-            FieldInfo f => f.IsInitOnly,
-        };
 
         Member = memberInfo;
         Name = typedAsMemberInfo.Name;
