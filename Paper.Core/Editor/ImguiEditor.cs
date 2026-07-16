@@ -6,6 +6,7 @@ using System;
 using Frent.Marshalling;
 using Frent.Core;
 using System.Linq;
+using System.Reflection;
 
 namespace Paper.Core.Editor;
 public class ImguiEditor
@@ -45,6 +46,11 @@ public class ImguiEditor
         game.Window.ClientSizeChanged += (s, e) => UpdateScaling();
 
         ComponentMetadata.RegisterBuiltinConverters(typeof(ImguiEditor).Assembly);
+    }
+
+    public void RegisterConverters(Assembly assembly)
+    {
+        ComponentMetadata.RegisterBuiltinConverters(assembly);
     }
 
     public void Draw(GameTime gameTime)

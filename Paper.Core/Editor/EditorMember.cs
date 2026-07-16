@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Paper.Core.Editor;
 
@@ -56,7 +58,7 @@ public class EditorMember<T> : EditorMember
                 => (sbox) => c(((StrongBox<TContainingType>)sbox).Value),
             FieldInfo f => (containing) =>
             {
-                innerFields ??= [StrongBoxField, f];
+                innerFields ??= [StrongBoxFieldInfoOf<TContainingType>(), f];
                 return __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T);
             },
             _ => throw new ArgumentException("Editor members must be at least readable."),
@@ -74,7 +76,7 @@ public class EditorMember<T> : EditorMember
             ,
             FieldInfo f => (containing, val) =>
             {
-                innerFields ??= [StrongBoxField, f];
+                innerFields ??= [StrongBoxFieldInfoOf<T>(), f];
                 __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T?) = val;
             },
             _ => null,
@@ -100,6 +102,17 @@ public abstract class EditorMember
     internal static readonly FieldInfo StrongBoxField = typeof(StrongBox<>)
         .GetField("Value", BindingFlags.Public | BindingFlags.Instance)
         ?? throw new Exception("Could not find Value field of StrongBox");
+
+    private static readonly Dictionary<Type, FieldInfo> _strongBoxFieldInfoCache = [];
+    internal static FieldInfo StrongBoxFieldInfoOf<T>()
+    {
+        return CollectionsMarshal.GetValueRefOrAddDefault(_strongBoxFieldInfoCache, typeof(T), out _)
+            ??= typeof(StrongBox<T>)
+            .GetField("Value", BindingFlags.Public | BindingFlags.Instance)
+            ?? throw new Exception("Could not find Value field of StrongBox");
+    }
+    
+
     public bool IsReadOnly { get; set; }
     public EditorMemberInfo Member { get; set; }
     public string Name { get; }
