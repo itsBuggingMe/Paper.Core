@@ -1,25 +1,52 @@
-﻿using ImGuiNET;
-using Paper.Core.Editor;
+using Frent;
+using Frent.Core;
+using ImGuiNET;
 using System;
 
 namespace Paper.Core.Editor.Converters;
 
-public class EnumFieldConverter<T> : FieldModifierBase<T>
-    where T : struct, Enum
+internal class EnumFieldConverter<T> : ConverterAttribute<T> where T : struct, Enum
 {
-    private static readonly string[] _options = Enum.GetNames<T>();
-    private static readonly T[] _values = Enum.GetValues<T>();
+    private static readonly string[] Options = Enum.GetNames<T>();
+    private static readonly T[] Values = Enum.GetValues<T>();
+    private static readonly bool IsFlags = typeof(T).IsDefined(typeof(FlagsAttribute), false);
 
-    protected override T UpdateValue(ComponentField field)
+    protected override void Display(Entity entity, ComponentID component, EditorMember<T> member)
     {
-        int current = Array.IndexOf(_values, _current);
-        int initalCurrent = current;
-
-        if (ImGui.Combo(field.Name, ref current, _options, _options.Length) && current != initalCurrent)
+        if (IsFlags)
         {
-            return _values[current];
+            DisplayFlags(member);
+            return;
         }
 
-        return _current;
+        int current = Array.IndexOf(Values, member.Value);
+        if (ImGui.Combo(member.Name, ref current, Options, Options.Length) && !member.IsReadOnly)
+            member.Value = Values[current];
+    }
+
+    private static void DisplayFlags(EditorMember<T> member)
+    {
+        T current = member.Value;
+        if (!ImGui.BeginCombo(member.Name, current.ToString()))
+            return;
+
+        ulong bits = (ulong)(object)current;
+        for (int i = 0; i < Values.Length; i++)
+        {
+            ulong flag = (ulong)(object)Values[i];
+            bool selected = flag == 0 ? bits == 0 : (bits & flag) == flag;
+            if (!ImGui.Selectable(Options[i], selected) || member.IsReadOnly)
+                continue;
+
+            bits = flag == 0
+                ? 0
+                : selected
+                    ? bits & ~flag
+                    : bits | flag;
+        }
+
+        ImGui.EndCombo();
+
+        member.Value = (T)(object)bits;
     }
 }

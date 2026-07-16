@@ -1,15 +1,19 @@
-﻿using SysVec2 = System.Numerics.Vector2;
+using Frent;
+using Frent.Core;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
+using SysVec2 = System.Numerics.Vector2;
 
 namespace Paper.Core.Editor.Converters;
 
-internal class Vector2FieldConverter : FieldModifierBase<Vector2>
+[BuiltInConverter]
+internal class Vector2FieldConverter : ConverterAttribute<Vector2>
 {
-    protected override Vector2 UpdateValue(ComponentField field)
+    protected override void Display(Entity entity, ComponentID component, EditorMember<Vector2> member)
     {
-        SysVec2 vector2 = new SysVec2(_current.X, _current.Y);
-        ImGui.InputFloat2(field.Name, ref vector2);
-        return new Vector2(vector2.X, vector2.Y);
+        Vector2 current = member.Value;
+        SysVec2 value = new(current.X, current.Y);
+        if (ImGui.InputFloat2(member.Name, ref value) && !member.IsReadOnly)
+            member.Value = new Vector2(value.X, value.Y);
     }
 }

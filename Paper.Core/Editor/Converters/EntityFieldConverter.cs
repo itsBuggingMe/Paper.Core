@@ -1,24 +1,27 @@
-﻿using Frent;
+using Frent;
+using Frent.Core;
 using Frent.Marshalling;
 using ImGuiNET;
 
 namespace Paper.Core.Editor.Converters;
 
-internal class EntityFieldConverter : FieldModifierBase<Entity>
+[BuiltInConverter]
+internal class EntityFieldConverter : ConverterAttribute<Entity>
 {
-    protected override Entity UpdateValue(ComponentField field)
+    protected override void Display(Entity entity, ComponentID component, EditorMember<Entity> member)
     {
-        int entity = EntityMarshal.EntityID(_current);
-        if(ImGui.InputInt(field.Name, ref entity, 0, 0, ImGuiInputTextFlags.None))
+        Entity current = member.Value;
+        int entityId = current.IsAlive ? EntityMarshal.EntityID(current) : 0;
+        if (!ImGui.InputInt(member.Name, ref entityId, 0, 0) || member.IsReadOnly)
+            return;
+
+        foreach (Entity potentialTarget in entity.World.CreateQuery().Build().EnumerateWithEntities())
         {
-            foreach(var potentialTarget in _current.World.CreateQuery().Build().EnumerateWithEntities())
+            if (EntityMarshal.EntityID(potentialTarget) == entityId)
             {
-                if(EntityMarshal.EntityID(potentialTarget) == entity)
-                {
-                    return potentialTarget;
-                }
+                member.Value = potentialTarget;
+                return;
             }
         }
-        return _current;
     }
 }

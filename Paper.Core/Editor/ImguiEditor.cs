@@ -6,7 +6,6 @@ using System;
 using Frent.Marshalling;
 using Frent.Core;
 using System.Linq;
-using System.Collections.Generic;
 
 namespace Paper.Core.Editor;
 public class ImguiEditor
@@ -15,6 +14,7 @@ public class ImguiEditor
     private readonly ImGuiRenderer _imGuiRenderer;
     private readonly Game _game;
     private readonly World _target;
+    private readonly ComponentDrawer _componentDrawer;
 
     private readonly Query _allNamedEntities;
     private readonly Query _allUnnamedEntities;
@@ -29,10 +29,11 @@ public class ImguiEditor
     private System.Numerics.Vector2 ButtonSize =>
         new System.Numerics.Vector2(_leftPanelWidth - ImGui.GetStyle().WindowPadding.X * 2f, 20 * _targetScaling);
 
-    public ImguiEditor(Game game, World world, IEnumerable<IFieldModifer> fieldEditorTypes)
+    public ImguiEditor(Game game, World world)
     {
         _game = game;
         _target = world;
+        _componentDrawer = new ComponentDrawer(this);
         _allNamedEntities = world.Query<EditorName>();
         _allUnnamedEntities = world.CreateQuery()
             .Without<EditorName>()
@@ -43,8 +44,7 @@ public class ImguiEditor
         UpdateScaling();
         game.Window.ClientSizeChanged += (s, e) => UpdateScaling();
 
-        foreach(var f in fieldEditorTypes)
-            ComponentMeta.FieldModifierTable.Add(f.FieldType, f);
+        ComponentMetadata.RegisterBuiltinConverters(typeof(ImguiEditor).Assembly);
     }
 
     public void Draw(GameTime gameTime)
@@ -169,26 +169,36 @@ public class ImguiEditor
             return;
         }
 
-        foreach (var componentID in SelectedEntity.ComponentTypes)
-        {
-            ImGui.SeparatorText(componentID.Type.Name);
-            var metadata = ComponentMeta.GetComponentMeta(componentID);
+        SelectedEntity.EnumerateComponents(_componentDrawer);
+    }
 
-            foreach (var fieldData in metadata.ComponentFields)
-            {
-                if (ComponentMeta.GetFieldModifer(fieldData.Type) is { } intf)
-                {
-                    ImGui.PushID(fieldData.Name);
-                    intf.Entity = SelectedEntity;
-                    intf.FieldToModify = fieldData;
-                    intf.UpdateUI();
-                    ImGui.PopID();
-                }
-                else
-                {
-                    ImGui.Text($"<Missing Field Modifier For {fieldData.Type.Name}>");
-                }
-            }
+    private void DrawComponent<T>(ref T component)
+    {
+        ComponentID componentID = Component<T>.ID;
+        ImGui.SeparatorText(componentID.Type.Name);
+        EditorMember[] members = ComponentMetadata.GetComponentMembers(componentID);
+
+        foreach (EditorMember member in members)
+        {
+            member.Initialize(component);
+            ImGui.PushID(member.PositionalHash);
+            if (member.IsReadOnly)
+                ImGui.BeginDisabled();
+
+            member.Converter.CallDisplay(SelectedEntity, componentID, member);
+
+            if (member.IsReadOnly)
+                ImGui.EndDisabled();
+            ImGui.PopID();
+            component = member.GetContainingValue<T>()!;
+        }
+    }
+
+    private sealed class ComponentDrawer(ImguiEditor editor) : IGenericAction
+    {
+        public void Invoke<T>(ref T component)
+        {
+            editor.DrawComponent(ref component);
         }
     }
 
