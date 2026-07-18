@@ -1,14 +1,18 @@
 using Frent;
-using Microsoft.Xna.Framework;
-using ImGuiNET;
-using Frent.Systems;
-using System;
-using Frent.Marshalling;
 using Frent.Core;
+using Frent.Marshalling;
+using Frent.Systems;
+using ImGuiNET;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Diagnostics;
-using Microsoft.Xna.Framework.Graphics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Paper.Core.Editor;
 public class ImguiEditor
@@ -280,14 +284,14 @@ public class ImguiEditor
 
         foreach (var (entity, name) in _allNamedEntities.EnumerateWithEntities<EditorName>())
         {
-            if (ImGui.Button(name.Value.Name, ButtonSize))
+            if (ImGui.Button(name.Value.Name ?? "<null>", ButtonSize))
                 SelectedEntity = entity;
         }
 
         foreach (var entity in _allUnnamedEntities.EnumerateWithEntities())
         {
             int entityID = EntityMarshal.EntityID(entity);
-            if (ImGui.Button($"{entityID}: [{string.Join(',', entity.ComponentTypes.Select(s => s.Type.Name))}] {(entity.TagTypes.Length > 0 ? $"Tags: [{string.Join(", ", entity.TagTypes.Select(t => t.Type.Name))}]" : "")}", ButtonSize))
+            if (ImGui.Button($"{entityID}: [{string.Join(',', entity.ComponentTypes.Select(s => GetFriendlyTypeName(s.Type)))}] {(entity.TagTypes.Length > 0 ? $"Tags: [{string.Join(", ", entity.TagTypes.Select(t => GetFriendlyTypeName(t.Type)))}]" : "")}", ButtonSize))
                 SelectedEntity = entity;
         }
 
@@ -313,6 +317,67 @@ public class ImguiEditor
             return;
         }
 
+        ImGui.SameLine();
+        if (ImGui.Button("Add Component"))
+            ImGui.OpenPopup("Add Component");
+
+        ImGui.SameLine();
+        if (ImGui.Button("Add Tag"))
+            ImGui.OpenPopup("Add Tag");
+
+        if (ImGui.BeginPopup("Add Component"))
+        {
+            bool hasAvailableComponent = false;
+
+            int last = GetLastComponentID();
+            for (ushort i = 1; i <= last; i++)
+            {
+                ComponentID availableComponentID = Unsafe.BitCast<ushort, ComponentID>(i);
+                if (SelectedEntity.Has(availableComponentID))
+                    continue;
+
+                hasAvailableComponent = true;
+                if (ImGui.MenuItem(GetFriendlyTypeName(availableComponentID.Type)))
+                {
+                    object component = Activator.CreateInstance(availableComponentID.Type)!;
+                    SelectedEntity.AddAs(availableComponentID, component);
+                    ImGui.CloseCurrentPopup();
+                    break;
+                }
+            }
+
+            if (!hasAvailableComponent)
+                ImGui.TextDisabled("No components available.");
+
+            ImGui.EndPopup();
+        }
+
+        if (ImGui.BeginPopup("Add Tag"))
+        {
+            bool hasAvailableTag = false;
+
+            int last = GetLastTagID();
+            for (ushort i = 1; i <= last; i++)
+            {
+                TagID availableTagID = Unsafe.BitCast<ushort, TagID>(i);
+                if (SelectedEntity.Tagged(availableTagID))
+                    continue;
+
+                hasAvailableTag = true;
+                if (ImGui.MenuItem(GetFriendlyTypeName(availableTagID.Type)))
+                {
+                    SelectedEntity.Tag(availableTagID);
+                    ImGui.CloseCurrentPopup();
+                    break;
+                }
+            }
+
+            if (!hasAvailableTag)
+                ImGui.TextDisabled("No tags available.");
+
+            ImGui.EndPopup();
+        }
+
         _componentToRemove = null;
         SelectedEntity.EnumerateComponents(_componentDrawer);
 
@@ -323,7 +388,7 @@ public class ImguiEditor
     private void DrawComponent<T>(ref T component)
     {
         ComponentID componentID = Component<T>.ID;
-        ImGui.SeparatorText(componentID.Type.Name);
+        ImGui.SeparatorText(GetFriendlyTypeName(componentID.Type));
         ImGui.PushID(componentID.Type.FullName);
         if (ImGui.SmallButton("Remove component"))
             _componentToRemove = componentID;
@@ -374,5 +439,26 @@ public class ImguiEditor
             ImGui.GetIO().FontGlobalScale = scale;
             _targetScaling = scale;
         }
+    }
+
+    private static int GetLastComponentID() =>
+        (int)typeof(Component).GetField("NextComponentID", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+
+    private static int GetLastTagID() =>
+        (int)typeof(Tag).GetField("_nextTagID", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+
+    private static Dictionary<Type, string> _cache = [];
+    public static string GetFriendlyTypeName(Type type)
+    {
+        if (type is { IsGenericType: false })
+            return type.Name;
+        Type genericTypeDef = type.GetGenericTypeDefinition();
+
+
+        return CollectionsMarshal.GetValueRefOrAddDefault(_cache, type, out _) ??=
+            new StringBuilder()
+                .Append(type.Name[..type.Name.LastIndexOf('`')])
+                .Append(genericTypeDef == typeof(Nullable<>) ? "?" : $"<{string.Join(',', type.GetGenericArguments().Select(GetFriendlyTypeName))}>")
+                .ToString();
     }
 }
