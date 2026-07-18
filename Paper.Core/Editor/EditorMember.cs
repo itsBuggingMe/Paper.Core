@@ -60,9 +60,20 @@ public class EditorMember<T> : EditorMember
                 => (sbox) => c(((StrongBox<TContainingType>)sbox).Value),
             FieldInfo f => (containing) =>
             {
-                innerFields ??= [StrongBoxFieldInfoOf<TContainingType>(), f];
-                return __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T);
-            },
+                if (typeof(TContainingType).IsValueType)
+                {
+                    innerFields ??= [StrongBoxFieldInfoOf<TContainingType>(), f];
+                    return __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T?);
+                }
+                else if (containing is StrongBox<TContainingType> { Value: not null } typed)
+                {
+                    innerFields ??= [f];
+                    return __refvalue(TypedReference.MakeTypedReference(typed.Value, innerFields), T?);
+                }
+
+                return default;
+            }
+            ,
             _ => throw new ArgumentException("Editor members must be at least readable."),
         };
 
@@ -78,9 +89,18 @@ public class EditorMember<T> : EditorMember
             ,
             FieldInfo f when !f.IsInitOnly => (containing, val) =>
             {
-                innerFields ??= [StrongBoxFieldInfoOf<T>(), f];
-                __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T?) = val;
-            },
+                if(typeof(TContainingType).IsValueType)
+                {
+                    innerFields ??= [StrongBoxFieldInfoOf<TContainingType>(), f];
+                    __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T?) = val;
+                }
+                else if(containing is StrongBox<TContainingType> { Value: not null } typed)
+                {
+                    innerFields ??= [f];
+                    __refvalue(TypedReference.MakeTypedReference(typed.Value, innerFields), T?) = val;
+                }
+            }
+            ,
             _ => null,
         };
 

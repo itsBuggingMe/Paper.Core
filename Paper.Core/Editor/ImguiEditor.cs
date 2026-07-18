@@ -287,7 +287,7 @@ public class ImguiEditor
         foreach (var entity in _allUnnamedEntities.EnumerateWithEntities())
         {
             int entityID = EntityMarshal.EntityID(entity);
-            if (ImGui.Button($"{entityID}, {string.Join(',', entity.ComponentTypes.Select(s => s.Type.Name))}", ButtonSize))
+            if (ImGui.Button($"{entityID}: [{string.Join(',', entity.ComponentTypes.Select(s => s.Type.Name))}] {(entity.TagTypes.Length > 0 ? $"Tags: [{string.Join(", ", entity.TagTypes.Select(t => t.Type.Name))}]" : "")}", ButtonSize))
                 SelectedEntity = entity;
         }
 
