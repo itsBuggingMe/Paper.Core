@@ -77,32 +77,36 @@ public class EditorMember<T> : EditorMember
             _ => throw new ArgumentException("Editor members must be at least readable."),
         };
 
-        SetValue? setter = info switch
+        bool hasReadonlyAttribute = Attribute.IsDefined(info.AsMemberInfo()!, typeof(EditorReadonly));
+        SetValue? setter = null;
+
+        if (!hasReadonlyAttribute)
         {
-            PropertyInfo p when typeof(TContainingType).IsValueType && p.GetSetMethod()?.CreateDelegate<SetValueTyped<TContainingType>>() is { } s
-                => (sbox, val) => s(ref ((StrongBox<TContainingType>)sbox).Value!, val),
-            PropertyInfo p when p.GetSetMethod()?.CreateDelegate<Action<TContainingType, T?>>() is { } c => (sbox, val) =>
+            setter = info switch
             {
-                if (sbox is StrongBox<TContainingType> { Value: not null } typed)
-                    c(typed.Value, val);
-            }
-            ,
-            FieldInfo f when !f.IsInitOnly => (containing, val) =>
-            {
-                if(typeof(TContainingType).IsValueType)
+                PropertyInfo p when typeof(TContainingType).IsValueType && p.GetSetMethod()?.CreateDelegate<SetValueTyped<TContainingType>>() is { } s
+                    => (sbox, val) => s(ref ((StrongBox<TContainingType>)sbox).Value!, val),
+                PropertyInfo p when p.GetSetMethod()?.CreateDelegate<Action<TContainingType, T?>>() is { } c => (sbox, val) =>
                 {
-                    innerFields ??= [StrongBoxFieldInfoOf<TContainingType>(), f];
-                    __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T?) = val;
-                }
-                else if(containing is StrongBox<TContainingType> { Value: not null } typed)
+                    if (sbox is StrongBox<TContainingType> { Value: not null } typed)
+                        c(typed.Value, val);
+                },
+                FieldInfo f when !f.IsInitOnly => (containing, val) =>
                 {
-                    innerFields ??= [f];
-                    __refvalue(TypedReference.MakeTypedReference(typed.Value, innerFields), T?) = val;
-                }
-            }
-            ,
-            _ => null,
-        };
+                    if(typeof(TContainingType).IsValueType)
+                    {
+                        innerFields ??= [StrongBoxFieldInfoOf<TContainingType>(), f];
+                        __refvalue(TypedReference.MakeTypedReference(containing, innerFields), T?) = val;
+                    }
+                    else if(containing is StrongBox<TContainingType> { Value: not null } typed)
+                    {
+                        innerFields ??= [f];
+                        __refvalue(TypedReference.MakeTypedReference(typed.Value, innerFields), T?) = val;
+                    }
+                },
+                _ => null,
+            };
+        }
 
         return (getter, setter, new StrongBox<TContainingType>());
     }

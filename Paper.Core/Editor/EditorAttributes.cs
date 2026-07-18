@@ -28,3 +28,5 @@ public class EditorIgnoreAttribute : Attribute;
 public class ExpandAttribute : Attribute;
 [AttributeUsage(AttributeTargets.Class)]
 public class BuiltInConverterAttribute : Attribute;
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class EditorReadonly : Attribute;
