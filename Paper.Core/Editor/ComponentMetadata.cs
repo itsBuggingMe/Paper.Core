@@ -11,7 +11,8 @@ internal static class ComponentMetadata
 {
     private static readonly Dictionary<ComponentID, EditorMember[]> _metadataCache = new();
     private static readonly Dictionary<Type, ConverterAttribute> _builtinConverters = [];
-
+    private static readonly MethodInfo _registerComponent = typeof(Component).GetMethod("RegisterComponent") ??
+        throw new Exception("");
     public static EditorMember[] GetComponentMembers(ComponentID componentType)
     {
         if(_metadataCache.TryGetValue(componentType, out EditorMember[]? metadata))
@@ -38,7 +39,8 @@ internal static class ComponentMetadata
                     if(t.m.CustomAttributes.Any(a => a.AttributeType == typeof(ExpandAttribute)))
                     {
                         Type componentConverterType = typeof(ComponentConverter<>).MakeGenericType(t.Type);
-                        return (Converter: (ConverterAttribute?)Activator.CreateInstance(componentConverterType, GetComponentMembers(Component.GetComponentID(t.Type))), t);
+                        _registerComponent.MakeGenericMethod(t.Type).Invoke(null, []);
+                        return (Converter: (ConverterAttribute?)Activator.CreateInstance(componentConverterType, (object)GetComponentMembers(Component.GetComponentID(t.Type))), t);
                     }
 
                     return (Converter: GetConverter(t.Type), t);
